@@ -1,12 +1,13 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Equivalence tests for ARK fused-packet all-reduce at Qwen3 TP shapes.
+"""Equivalence tests for ARK Qwen3 all-reduce routes.
 
-Verifies that ``ark.all_reduce_packet`` produces the same result as a
-torch all-reduce (sum) across ranks. Tests are d2h-safe: each worker
-copies the result to CPU (``result.to_torch().cpu()``) AFTER stopping
-the ARK runtime, then asserts on the host with ``torch.allclose``.
+Verifies that ``ark.all_reduce`` dispatch and ``ark.all_reduce_prefill``
+produce the same result as a torch all-reduce (sum) across ranks. Tests are
+D2H-safe: each worker copies the result to CPU (``result.to_torch().cpu()``)
+after stopping the ARK runtime, then asserts on the host with
+``torch.allclose``.
 
 No torch GPU kernel is issued while the ARK runtime is launched.
 
@@ -59,6 +60,7 @@ from ark.executor import Executor
 rank = int(sys.argv[1])
 world_size = int(sys.argv[2])
 n_elements = int(sys.argv[3])
+route = sys.argv[4]
 
 ark.init()
 ark.set_rank(rank)
@@ -73,7 +75,14 @@ x = x_cpu.to(device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 
 # Build ARK graph (no GPU kernel launched yet).
-result = ark.all_reduce_packet(x, rank, world_size)
+if route == "auto":
+    result = ark.all_reduce(x, rank, world_size)
+elif route == "packet":
+    result = ark.all_reduce_packet(x, rank, world_size)
+elif route == "prefill":
+    result = ark.all_reduce_prefill(x, rank, world_size)
+else:
+    raise ValueError(f"unknown route: {route}")
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -105,6 +114,7 @@ if rank == 0:
         "rank": rank,
         "world_size": world_size,
         "n_elements": n_elements,
+        "route": route,
         "pass": close,
         "max_diff": max_diff,
     }))
@@ -124,7 +134,9 @@ def _tail(data, limit=500):
     return data.decode(errors="replace").strip()[-limit:]
 
 
-def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
+def _run_allreduce_test(
+    world_size: int, n_elements: int, route: str = "auto", timeout: int = 120
+):
     """Spawn *world_size* workers and assert all-reduce correctness."""
     procs = []
     for rank in range(world_size):
@@ -137,6 +149,7 @@ def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
                     str(rank),
                     str(world_size),
                     str(n_elements),
+                    route,
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -175,6 +188,7 @@ def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
 
     assert not errors, "\n".join(errors)
     assert result_json is not None, "rank 0 produced no output"
+    assert result_json["route"] == route
     assert result_json[
         "pass"
     ], f"allclose failed: max_diff={result_json['max_diff']}"
@@ -206,8 +220,10 @@ def test_allreduce_decode_tp8():
 )
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_prefill_tp2():
-    """Prefill (2048,4096) all-reduce at TP=2."""
-    _run_allreduce_test(world_size=2, n_elements=2048 * 4096)
+    """Explicit prefill (2048,4096) all-reduce at TP=2."""
+    _run_allreduce_test(
+        world_size=2, n_elements=2048 * 4096, route="prefill"
+    )
 
 
 @pytest.mark.skipif(
@@ -215,5 +231,7 @@ def test_allreduce_prefill_tp2():
 )
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_prefill_tp8():
-    """Prefill (2048,4096) all-reduce at TP=8."""
-    _run_allreduce_test(world_size=8, n_elements=2048 * 4096)
+    """Explicit prefill (2048,4096) all-reduce at TP=8."""
+    _run_allreduce_test(
+        world_size=8, n_elements=2048 * 4096, route="prefill"
+    )
