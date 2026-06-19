@@ -25,7 +25,8 @@ bool all_reduce_packet_layout_supported(Tensor input) {
     if (input.strides() != input.padded_shape()) {
         return false;
     }
-    for (auto offset : input.offsets().vector()) {
+    Dims offsets = input.offsets();
+    for (auto offset : offsets.vector()) {
         if (offset != 0) {
             return false;
         }
@@ -55,7 +56,7 @@ void require_all_reduce_packet_supported(Tensor input, int rank,
     size_t dtype_bytes = input.data_type().bytes();
     if (dtype_bytes == 0 || sizeof(uint32_t) % dtype_bytes != 0) {
         ERR(ModelError, "all_reduce_packet: unsupported data type ",
-            input.data_type().type_str());
+            input.data_type().name());
     }
     size_t elems_per_uint32 = sizeof(uint32_t) / dtype_bytes;
     size_t divisor = elems_per_uint32 * 2 * rank_num;
@@ -137,6 +138,7 @@ std::string Model::all_reduce_route(Tensor input, int rank, int rank_num,
         return "ring";
     }
     ERR(ModelError, "unknown all_reduce route: ", requested);
+    return "ring";
 }
 
 Tensor Model::all_reduce_routed(Tensor input, int rank, int rank_num,
@@ -153,7 +155,6 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
                                 Tensor output, const std::string &) {
     require_all_reduce_packet_supported(input, rank, rank_num);
 
-    int n_peers = rank_num - 1;
     size_t nelems = input.shape().nelems();
     size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
 
