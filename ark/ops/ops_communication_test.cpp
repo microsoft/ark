@@ -10,6 +10,7 @@
 #include "model/model_buffer.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
+#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
 
 ark::unittest::State test_communication_host_ops() {
