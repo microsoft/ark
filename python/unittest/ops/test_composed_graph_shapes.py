@@ -163,6 +163,26 @@ def test_rmsnorm_composed(shape):
     ), f"rmsnorm shape={shape} max_diff={(result - expected).abs().max()}"
 
 
+@pytest.mark.parametrize(
+    "dtype, ark_dtype",
+    [
+        (torch.float16, ark.fp16),
+        (torch.bfloat16, ark.bf16),
+    ],
+)
+def test_rmsnorm_rank3_single_token(dtype, ark_dtype):
+    """Rank-3 single-token RMSNorm must not misalign scalar intermediates."""
+    shape = (1, 1, 128)
+    x = torch.randn(shape, dtype=dtype, device=DEVICE)
+    result = _ark_rmsnorm(x, out_dtype=ark_dtype).eval()
+    expected = _torch_rmsnorm(x)
+    assert result.dtype == dtype
+    atol = 5e-3 if dtype == torch.float16 else 5e-2
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-3
+    ), f"rmsnorm shape={shape} dtype={dtype} max_diff={(result - expected).abs().max()}"
+
+
 # ---------------------------------------------------------------------------
 # Composed softmax at shapes with H > W
 # ---------------------------------------------------------------------------

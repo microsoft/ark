@@ -131,6 +131,12 @@ static size_t tensor_stride_bytes(const Json &tensor) {
     return nelems * DataType::from_name(tensor["DataType"]).bytes();
 }
 
+static constexpr size_t kVectorLoadAlignmentBytes = 16;
+
+static size_t align_up(size_t value, size_t alignment) {
+    return ((value + alignment - 1) / alignment) * alignment;
+}
+
 class CommResource {
    public:
     CommResource(int device_id, int rank, int world_size);
@@ -560,7 +566,8 @@ void PlanResource::init_internal_buffers() {
             // previous plan.
             extra_buffer_ids_.insert(buf_id);
         } else {
-            // Assign an offset to this internal local buffer
+            // Assign a vector-load-safe offset to this internal local buffer.
+            offset = align_up(offset, kVectorLoadAlignmentBytes);
             internal_buffer_id_to_offset_[buf_id] = offset;
             for (const auto &tag_info : buffer->send_tags()) {
                 // This local buffer will send data to remote ranks
