@@ -417,13 +417,113 @@ ark::unittest::State test_all_reduce_packet_fused_2gpus() {
     return ark::unittest::SUCCESS;
 }
 
+template <int NumGpus>
+void test_all_reduce_packet_fused_inplace_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor ones = m.tensor({nelem}, ark::FP16);
+            ark::Tensor data = m.mul(ones, float(gpu_id + 1));
+            ark::Tensor output =
+                m.all_reduce_packet(data, gpu_id, NumGpus, data);
+
+            UNITTEST_EQ(output.ref()->buffer()->id(),
+                        data.ref()->buffer()->id());
+
+            std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
+                                              ark::half_t(1.0f));
+            auto result = ark::op_test(
+                "all_reduce_packet_fused_inplace", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+ark::unittest::State test_all_reduce_packet_fused_inplace_2gpus() {
+    test_all_reduce_packet_fused_inplace_internal<2>(4096);
+    return ark::unittest::SUCCESS;
+}
+
+bool has_op_named(const ark::Model &model, const std::string &type,
+                  const std::string &name) {
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) continue;
+        if (op->type() == ark::ModelOpT::from_name(type) &&
+            op->name() == name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool has_op_type(const ark::Model &model, const std::string &type) {
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) continue;
+        if (op->type() == ark::ModelOpT::from_name(type)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+ark::unittest::State test_all_reduce_qwen3_route_selection() {
+    {
+        ark::Model m(0, 2);
+        ark::Tensor data = m.tensor({1, 4096}, ark::FP16);
+        ark::Tensor output = m.all_reduce(data, 0, 2);
+        UNITTEST_TRUE(has_op_named(m, "AllReducePacketFused",
+                                   "all_reduce_packet"));
+        UNITTEST_FALSE(has_op_named(m, "AllReducePacketFused",
+                                    "all_reduce_prefill"));
+    }
+    {
+        ark::Model m(0, 2);
+        ark::Tensor data = m.tensor({2048, 4096}, ark::FP16);
+        ark::Tensor output = m.all_reduce(data, 0, 2);
+        UNITTEST_TRUE(has_op_named(m, "AllReducePacketFused",
+                                   "all_reduce_prefill"));
+    }
+    {
+        ark::Model m(0, 2);
+        ark::Tensor data = m.tensor({2048 * 4096}, ark::FP16);
+        ark::Tensor output = m.all_reduce_prefill(data, 0, 2, data);
+        UNITTEST_TRUE(has_op_named(m, "AllReducePacketFused",
+                                   "all_reduce_prefill"));
+        UNITTEST_EQ(output.ref()->buffer()->id(), data.ref()->buffer()->id());
+    }
+    {
+        ark::Model m(0, 2);
+        ark::Tensor data = m.tensor({4097}, ark::FP16);
+        ark::Tensor output = m.all_reduce(data, 0, 2);
+        UNITTEST_FALSE(has_op_type(m, "AllReducePacketFused"));
+        UNITTEST_TRUE(has_op_type(m, "Send"));
+        UNITTEST_TRUE(has_op_type(m, "Recv"));
+    }
+    {
+        ark::Model m(0, 2);
+        ark::Tensor data = m.tensor({4097}, ark::FP16);
+        UNITTEST_THROW(m.all_reduce_prefill(data, 0, 2), ark::ModelError);
+        UNITTEST_FALSE(has_op_type(m, "AllReducePacketFused"));
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
+    UNITTEST(test_all_reduce_qwen3_route_selection);
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
     UNITTEST(test_all_reduce_packet_4gpus);
     UNITTEST(test_all_reduce_packet_8gpus);
     UNITTEST(test_all_reduce_packet_fused_ext_2gpus);
     UNITTEST(test_all_reduce_packet_fused_2gpus);
+    UNITTEST(test_all_reduce_packet_fused_inplace_2gpus);
     UNITTEST(test_all_reduce_sm_4gpus);
     UNITTEST(test_all_reduce_sm_8gpus);
     UNITTEST(test_all_reduce_inplace_2gpus);

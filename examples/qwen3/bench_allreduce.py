@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Benchmark end-to-end ``ark.all_reduce_packet`` latency on torch input.
+"""Benchmark end-to-end ``ark.all_reduce`` latency on torch input.
 
 Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
 (2048, 4096) shapes, including registered-memory staging when needed. Each
@@ -51,10 +51,22 @@ ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 # Input is created and synchronized BEFORE launch, while no ARK loop kernel is
-# live (safe). The benchmark includes any staging done by ark.all_reduce_packet.
+# live (safe). The benchmark includes any staging done by the dispatched route.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
-result = ark.all_reduce_packet(x, rank, world_size)
+result = ark.all_reduce(x, rank, world_size)
+graph = json.loads(ark.Model.get_model().compress().serialize())
+route_names = [
+    node["Op"]["Name"]
+    for node in graph["Nodes"]
+    if node["Op"]["Type"] == "AllReducePacketFused"
+]
+if "all_reduce_prefill" in route_names:
+    route = "prefill"
+elif "all_reduce_packet" in route_names:
+    route = "packet"
+else:
+    route = "other"
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -75,6 +87,7 @@ latency_us = host_s * 1e6
 print(json.dumps({
     "rank": rank,
     "label": label,
+    "route": route,
     "world_size": world_size,
     "n_elements": n_elements,
     "latency_us": round(latency_us, 3),
@@ -145,10 +158,18 @@ def run_bench(world_size, timeout, shape):
                         file=sys.stderr,
                     )
                 result = _load_worker_result(out)
+                expected_route = "packet" if "decode" in label else "prefill"
                 if result is None:
                     shape_failed = True
                     print(
                         f"ERROR rank={rank} {label}: no result",
+                        file=sys.stderr,
+                    )
+                elif result.get("route") != expected_route:
+                    shape_failed = True
+                    print(
+                        f"ERROR rank={rank} {label}: route "
+                        f"{result.get('route')} != {expected_route}",
                         file=sys.stderr,
                     )
                 else:
@@ -159,6 +180,7 @@ def run_bench(world_size, timeout, shape):
                 results.append(
                     {
                         "label": max_result["label"],
+                        "route": max_result["route"],
                         "world_size": world_size,
                         "n_elements": max_result["n_elements"],
                         "max_rank": max_result["rank"],
@@ -183,15 +205,18 @@ def run_bench(world_size, timeout, shape):
 
     print(f"\n{'=' * 72}")
     print(
-        f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
+        f"ARK all_reduce torch-input latency  |  TP={world_size}  "
         f"(single iteration, max rank, includes staging)"
     )
     print(f"{'=' * 72}")
-    print(f"{'Shape':<24}{'Elements':>12}{'Max rank':>10}{'ARK us':>10}")
+    print(
+        f"{'Shape':<24}{'Route':>10}{'Elements':>12}"
+        f"{'Max rank':>10}{'ARK us':>10}"
+    )
     print(f"{'-' * 72}")
     for d in results:
         print(
-            f"{d['label']:<24}{d['n_elements']:>12,}"
+            f"{d['label']:<24}{d['route']:>10}{d['n_elements']:>12,}"
             f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
         )
     print(f"{'=' * 72}\n")
@@ -201,7 +226,7 @@ def run_bench(world_size, timeout, shape):
 def main():
     ap = argparse.ArgumentParser(
         description=(
-            "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
+            "Benchmark end-to-end ark.all_reduce latency on torch input "
             "at Qwen3 TP shapes, including registered-memory staging "
             "when needed"
         )

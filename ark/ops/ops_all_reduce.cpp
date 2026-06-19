@@ -5,64 +5,129 @@
 #include "ops_common.hpp"
 #include "ops_communication.hpp"
 
-namespace ark {
+namespace {
 
-Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
-                         const std::string &) {
+constexpr ark::DimType kQwen3HiddenSize = 4096;
+constexpr ark::DimType kQwen3PrefillTokens = 2048;
+constexpr ark::DimType kQwen3DecodeElements = kQwen3HiddenSize;
+constexpr ark::DimType kQwen3PrefillElements =
+    kQwen3PrefillTokens * kQwen3HiddenSize;
+constexpr int kMaxQwen3Tp = 8;
+
+bool is_supported_qwen3_route(ark::Tensor input, int rank_num,
+                              ark::DimType nelems) {
+    constexpr int kFp16ElemsPerPacket = 4;
+    return input.data_type() == ark::FP16 && input.shape().nelems() == nelems &&
+           rank_num >= 2 && rank_num <= kMaxQwen3Tp &&
+           nelems % (kFp16ElemsPerPacket * rank_num) == 0;
+}
+
+ark::Tensor all_reduce_ring(ark::Model &model, ark::Tensor input, int gpu_id,
+                            int gpu_num, ark::Tensor output) {
     std::vector<int> tags(gpu_num);
     for (int i = 0; i < gpu_num; i++) {
-        tags[i] = this->unique_tag();
+        tags[i] = model.unique_tag();
     }
     if (output.is_null()) {
-        output = this->copy(input);
+        output = model.copy(input);
     } else if (output.ref()->buffer()->id() == input.ref()->buffer()->id()) {
         // In-place: copy input so the ring loop does not mutate send data.
         // TODO: This catches the common case (output IS input). Sub-buffer
         // offset aliasing or aliasing through different buffer objects backed
         // by the same allocation is not currently detected.
-        input = this->copy(input);
+        input = model.copy(input);
     }
-    Tensor prev_recv = NullTensor;
-    Tensor cumulate = output;
+    ark::Tensor prev_recv = ark::NullTensor;
+    ark::Tensor cumulate = output;
     for (int i = 1; i < gpu_num; i++) {
         int gpu_dst = (gpu_id + i) % gpu_num;
         int gpu_src = (gpu_id + gpu_num - i) % gpu_num;
-        Tensor send_data;
+        ark::Tensor send_data;
         if (prev_recv.is_null()) {
             send_data = input;
         } else {
-            send_data = this->identity(input, {prev_recv});
+            send_data = model.identity(input, {prev_recv});
         }
-        send_data = this->send(send_data, gpu_dst, tags[gpu_id]);
-        Tensor send_done_tensor = this->send_done(send_data);
-        Tensor recv_buf = this->tensor(output.shape(), output.data_type());
-        Tensor recv = this->identity(recv_buf, {send_done_tensor});
-        recv = this->recv(recv_buf, gpu_src, tags[gpu_src]);
+        send_data = model.send(send_data, gpu_dst, tags[gpu_id]);
+        ark::Tensor send_done_tensor = model.send_done(send_data);
+        ark::Tensor recv_buf = model.tensor(output.shape(), output.data_type());
+        ark::Tensor recv = model.identity(recv_buf, {send_done_tensor});
+        recv = model.recv(recv_buf, gpu_src, tags[gpu_src]);
         prev_recv = recv;
-        cumulate = this->add(cumulate, recv, cumulate);
+        cumulate = model.add(cumulate, recv, cumulate);
     }
     return cumulate;
 }
 
-Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
-                                Tensor output, const std::string &) {
+}  // namespace
+
+namespace ark {
+
+Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
+                         const std::string &) {
+    if (gpu_id == this->rank() &&
+        is_supported_qwen3_route(input, gpu_num, kQwen3PrefillElements)) {
+        return this->all_reduce_prefill(input, gpu_id, gpu_num, output,
+                                        "all_reduce_prefill");
+    }
+    if (gpu_id == this->rank() &&
+        is_supported_qwen3_route(input, gpu_num, kQwen3DecodeElements)) {
+        return this->all_reduce_packet(input, gpu_id, gpu_num, output,
+                                       "all_reduce_packet");
+    }
+    return all_reduce_ring(*this, input, gpu_id, gpu_num, output);
+}
+
+Tensor Model::all_reduce_packet_impl(Tensor input, int rank, int rank_num,
+                                     Tensor output,
+                                     const std::string &op_name) {
     int n_peers = rank_num - 1;
     if (n_peers < 1) {
-        ERR(ModelError, "all_reduce_packet requires rank_num >= 2");
+        ERR(ModelError, op_name, " requires rank_num >= 2");
+    }
+    if (rank < 0 || rank >= rank_num) {
+        ERR(ModelError, op_name, ": rank ", rank,
+            " must be in [0, rank_num)");
     }
 
     size_t nelems = input.shape().nelems();
-    size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
+    size_t type_bytes = input.data_type().bytes();
+    if (type_bytes == 0 || sizeof(uint32_t) < type_bytes ||
+        sizeof(uint32_t) % type_bytes != 0) {
+        ERR(ModelError, op_name, ": unsupported data type ",
+            input.data_type().name());
+    }
+    size_t elems_per_uint32 = sizeof(uint32_t) / type_bytes;
     if (nelems % (elems_per_uint32 * 2 * rank_num) != 0) {
-        ERR(ModelError, "all_reduce_packet: nelems (", nelems,
+        ERR(ModelError, op_name, ": nelems (", nelems,
             ") must be divisible by ", elems_per_uint32 * 2 * rank_num);
     }
+    if (!output.is_null() &&
+        (output.shape().nelems() != input.shape().nelems() ||
+         output.data_type() != input.data_type())) {
+        ERR(ModelError, op_name,
+            ": output must have the same element count and data type as input");
+    }
 
-    // Copy external input into an internal buffer so it resides in mscclpp
-    // registered memory. Internal ARK tensors are already registered.
     auto input_info =
         BufferRegistry::get_instance().get(input.ref()->buffer()->id());
-    if (input.is_external() || (input_info && input_info->is_external)) {
+    std::shared_ptr<BufferRegistry::Info> output_info;
+    if (!output.is_null()) {
+        output_info =
+            BufferRegistry::get_instance().get(output.ref()->buffer()->id());
+    }
+    bool output_aliases_input =
+        !output.is_null() &&
+        (output.ref()->buffer()->id() == input.ref()->buffer()->id() ||
+         (input_info && output_info && input_info->data != nullptr &&
+          input_info->data == output_info->data));
+
+    // Copy external input into an internal buffer so it resides in mscclpp
+    // registered memory. Internal ARK tensors are already registered. In-place
+    // calls also need a copy so the collective does not overwrite input shards
+    // before all peers read them.
+    if (input.is_external() || (input_info && input_info->is_external) ||
+        output_aliases_input) {
         input = this->copy(input);
     }
 
@@ -91,9 +156,35 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
     uint32_t flag = 1;  // Hardcoded; per-call rotation deferred.
     return impl_
         ->create_op<ModelOpAllReducePacketFused>(
-            "all_reduce_packet", input.ref(), output.ref(), rank, rank_num,
-            flag, scratch.ref(), peer_scratch_refs)
+            op_name, input.ref(), output.ref(), rank, rank_num, flag,
+            scratch.ref(), peer_scratch_refs)
         ->result_tensors()[0];
+}
+
+Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
+                                Tensor output, const std::string &name) {
+    return this->all_reduce_packet_impl(
+        input, rank, rank_num, output,
+        name.empty() ? std::string("all_reduce_packet") : name);
+}
+
+Tensor Model::all_reduce_prefill(Tensor input, int rank, int rank_num,
+                                 Tensor output, const std::string &name) {
+    if (!is_supported_qwen3_route(input, rank_num, kQwen3PrefillElements)) {
+        ERR(ModelError,
+            "all_reduce_prefill supports only FP16 Qwen3 prefill tensors with ",
+            kQwen3PrefillElements,
+            " elements, rank_num in [2, 8], and packet-aligned shards; got dtype=",
+            input.data_type().name(), ", nelems=", input.shape().nelems(),
+            ", rank_num=", rank_num);
+    }
+    if (rank != this->rank()) {
+        ERR(ModelError, "all_reduce_prefill rank ", rank,
+            " must match model rank ", this->rank());
+    }
+    return this->all_reduce_packet_impl(
+        input, rank, rank_num, output,
+        name.empty() ? std::string("all_reduce_prefill") : name);
 }
 
 }  // namespace ark

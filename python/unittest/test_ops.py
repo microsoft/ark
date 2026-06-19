@@ -1,6 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import json
+
+import pytest
+
 from common import ark, pytest_ark
 
 
@@ -218,9 +222,63 @@ def test_ops_transpose():
     assert b.shape() == [32, 64]
 
 
+def _op_names(op_type):
+    model = ark.Model.get_model().compress()
+    data = json.loads(model.serialize())
+    return [
+        node["Op"]["Name"]
+        for node in data["Nodes"]
+        if node["Op"]["Type"] == op_type
+    ]
+
+
 @pytest_ark()
 def test_ops_all_reduce_packet():
     ark.set_world_size(2)
     a = ark.tensor([1024], ark.fp16)
     b = ark.all_reduce_packet(a, rank=0, world_size=2)
     assert b.shape() == [1024]
+    assert "all_reduce_packet" in _op_names("AllReducePacketFused")
+
+
+@pytest_ark()
+def test_ops_all_reduce_qwen3_decode_routes_to_packet():
+    ark.set_world_size(2)
+    a = ark.tensor([1, 4096], ark.fp16)
+    b = ark.all_reduce(a, rank=0, world_size=2)
+    assert b.shape() == [1, 4096]
+    names = _op_names("AllReducePacketFused")
+    assert "all_reduce_packet" in names
+    assert "all_reduce_prefill" not in names
+
+
+@pytest_ark()
+def test_ops_all_reduce_qwen3_prefill_routes_to_prefill():
+    ark.set_world_size(2)
+    a = ark.tensor([2048, 4096], ark.fp16)
+    b = ark.all_reduce(a, rank=0, world_size=2)
+    assert b.shape() == [2048, 4096]
+    assert "all_reduce_prefill" in _op_names("AllReducePacketFused")
+
+
+@pytest_ark()
+def test_ops_all_reduce_prefill_api_and_rejection():
+    ark.set_world_size(2)
+    a = ark.tensor([2048 * 4096], ark.fp16)
+    b = ark.all_reduce_prefill(a, rank=0, world_size=2, output=a)
+    assert b.shape() == [2048 * 4096]
+    assert "all_reduce_prefill" in _op_names("AllReducePacketFused")
+
+    with pytest.raises(ark.ModelError):
+        ark.all_reduce_prefill(ark.tensor([4097], ark.fp16), rank=0, world_size=2)
+
+
+@pytest_ark()
+def test_ops_all_reduce_unsupported_shape_falls_back_to_ring():
+    ark.set_world_size(2)
+    a = ark.tensor([4097], ark.fp16)
+    b = ark.all_reduce(a, rank=0, world_size=2)
+    assert b.shape() == [4097]
+    assert _op_names("AllReducePacketFused") == []
+    assert _op_names("Send")
+    assert _op_names("Recv")

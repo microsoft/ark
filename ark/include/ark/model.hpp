@@ -20,6 +20,10 @@ class Model : public ModelGraph {
     size_t id_;
     std::set<int> tags_;
 
+    Tensor all_reduce_packet_impl(Tensor input, int rank, int rank_num,
+                                  Tensor output,
+                                  const std::string &op_name);
+
    public:
     Model(int rank = 0, int world_size = 1);
 
@@ -279,6 +283,11 @@ class Model : public ModelGraph {
     Tensor all_reduce_packet(Tensor input, int rank, int rank_num,
                              Tensor output = NullTensor,
                              const std::string &name = "");
+    // Explicit Qwen3 prefill all-reduce route. Supports FP16 tensors with
+    // 2048 * 4096 elements (or an equivalent flattened shape).
+    Tensor all_reduce_prefill(Tensor input, int rank, int rank_num,
+                              Tensor output = NullTensor,
+                              const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each

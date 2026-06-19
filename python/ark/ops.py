@@ -37,6 +37,7 @@ __all__ = [
     "div",
     "all_reduce",
     "all_reduce_packet",
+    "all_reduce_prefill",
     "embedding",
     "cast",
     "copy",
@@ -699,6 +700,28 @@ def all_reduce_packet(
     if output is not NullTensor:
         output = output._tensor
     _tensor = Model.get_model().all_reduce_packet(
+        input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+def all_reduce_prefill(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    output: Tensor = NullTensor,
+    name: str = "",
+) -> Tensor:
+    """
+    Explicit Qwen3 prefill all-reduce route. Supports FP16 tensors with
+    2048 * 4096 elements, or an equivalent flattened shape. Use
+    :func:`all_reduce` for safe fallback on unsupported shapes.
+    """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
+    if output is not NullTensor:
+        output = output._tensor
+    _tensor = Model.get_model().all_reduce_prefill(
         input._tensor, rank, world_size, output, name
     )
     return Tensor(_tensor)
