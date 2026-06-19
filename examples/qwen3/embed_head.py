@@ -33,6 +33,23 @@ def _ark_dtype_from_tensor(tensor, default=None):
     raise TypeError("out_dtype is required for non-tensor inputs")
 
 
+def _tensor_shape(tensor):
+    """Return shape as a list for an ARK or torch tensor."""
+    if isinstance(tensor, ark.Tensor):
+        return tensor.shape()
+    if torch is not None and isinstance(tensor, torch.Tensor):
+        return list(tensor.shape)
+    raise TypeError("expected an ARK or torch tensor")
+
+
+def _prod(values):
+    """Return the integer product of shape dimensions."""
+    result = 1
+    for value in values:
+        result *= value
+    return result
+
+
 def qwen3_token_embedding(tokens, embed_weight):
     """Apply the Qwen3 token embedding table with ARK's embedding op."""
     return ark.embedding(tokens, embed_weight)
@@ -46,8 +63,13 @@ def qwen3_final_rmsnorm(
 ):
     """Apply final RMSNorm with fp32 reduction and dtype-restored output."""
     dst_dtype = _ark_dtype_from_tensor(hidden, out_dtype)
-    hidden_fp32 = ark.cast(hidden, ark.fp32)
-    hidden_shape = hidden_fp32.shape()
+    original_shape = _tensor_shape(hidden)
+    hidden_shape = original_shape
+    hidden_for_norm = hidden
+    if len(original_shape) > 2:
+        hidden_shape = [_prod(original_shape[:-1]), original_shape[-1]]
+        hidden_for_norm = ark.reshape(hidden, hidden_shape)
+    hidden_fp32 = ark.cast(hidden_for_norm, ark.fp32)
     weight_fp32 = ark.cast(norm_weight, ark.fp32)
     if weight_fp32.shape() == [hidden_shape[-1]] and len(hidden_shape) > 1:
         weight_fp32 = ark.reshape(
@@ -57,14 +79,24 @@ def qwen3_final_rmsnorm(
     mean_sq = ark.reduce_mean(hidden_sq, axis=-1)
     rms_inv = ark.rsqrt(ark.add(mean_sq, eps))
     normalized = ark.mul(ark.mul(hidden_fp32, rms_inv), weight_fp32)
-    if dst_dtype == ark.fp32:
-        return normalized
-    return ark.cast(normalized, dst_dtype)
+    if dst_dtype != ark.fp32:
+        normalized = ark.cast(normalized, dst_dtype)
+    if hidden_shape != original_shape:
+        normalized = ark.reshape(normalized, original_shape)
+    return normalized
 
 
 def qwen3_lm_head(hidden, lm_head_weight):
     """Project normalized hidden states with the Qwen3 lm_head weight."""
-    return ark.matmul(hidden, lm_head_weight, transpose_other=True)
+    hidden_shape = _tensor_shape(hidden)
+    if len(hidden_shape) <= 2:
+        return ark.matmul(hidden, lm_head_weight, transpose_other=True)
+    flat_hidden = ark.reshape(
+        hidden, [_prod(hidden_shape[:-1]), hidden_shape[-1]]
+    )
+    logits = ark.matmul(flat_hidden, lm_head_weight, transpose_other=True)
+    vocab_size = _tensor_shape(lm_head_weight)[0]
+    return ark.reshape(logits, hidden_shape[:-1] + [vocab_size])
 
 
 def qwen3_embed_head(
