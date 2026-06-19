@@ -76,6 +76,15 @@ torch.cuda.synchronize(rank)
 # Build ARK graph (no GPU kernel launched yet).
 x_ark = ark.Tensor.from_torch(x)
 selected_route = ark.all_reduce_route(x_ark, rank, world_size, route="auto")
+if selected_route != expected_route:
+    print(
+        f"rank {rank}: expected all-reduce route {expected_route!r}, "
+        f"got {selected_route!r}",
+        file=sys.stderr,
+        flush=True,
+    )
+    Executor.reset()
+    os._exit(1)
 result = ark.all_reduce_routed(x_ark, rank, world_size, route=selected_route)
 
 with ark.Runtime() as rt:

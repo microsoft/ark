@@ -596,6 +596,17 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         UNITTEST_TRUE(count_ops(model, "Send") > 0);
     }
     {
+        ark::Model model(0, 8);
+        ark::Tensor tns = model.tensor({2048 * 4096}, ark::FP16);
+        ark::Tensor output = model.tensor(tns.shape(), tns.data_type());
+        ark::Tensor result = model.all_reduce_routed(tns, 0, 8, output);
+        UNITTEST_EQ(result.ref()->buffer()->id(), output.ref()->buffer()->id());
+        UNITTEST_EQ(result.shape(), output.shape());
+        UNITTEST_EQ(count_ops(model, "AllReducePacketFused"), 0);
+        UNITTEST_TRUE(count_ops(model, "Send") > 0);
+        UNITTEST_EQ(count_ops(model, "Copy"), 1);
+    }
+    {
         ark::Model model(0, 2);
         ark::Tensor tns = model.tensor({1023}, ark::FP16);
         UNITTEST_EQ(model.all_reduce_route(tns, 0, 2), "ring");
@@ -609,6 +620,15 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         ark::Tensor base = model.tensor({65, 64}, ark::FP16);
         ark::Tensor tns =
             model.refer(base, {64, 64}, {65, 64}, {0, 0}, {64, 64});
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 2), "ring");
+        UNITTEST_THROW(model.all_reduce_route(tns, 0, 2, "packet"),
+                       ark::ModelError);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor base = model.tensor({64, 64}, ark::FP16);
+        ark::Tensor tns =
+            model.refer(base, {63, 64}, {64, 64}, {1, 0}, {64, 64});
         UNITTEST_EQ(model.all_reduce_route(tns, 0, 2), "ring");
         UNITTEST_THROW(model.all_reduce_route(tns, 0, 2, "packet"),
                        ark::ModelError);

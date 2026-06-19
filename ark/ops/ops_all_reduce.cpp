@@ -71,7 +71,8 @@ bool is_registered_external(Tensor tensor) {
     if (tensor.is_null()) {
         return false;
     }
-    auto info = BufferRegistry::get_instance().get(tensor.ref()->buffer()->id());
+    auto info =
+        BufferRegistry::get_instance().get(tensor.ref()->buffer()->id());
     return tensor.is_external() || (info && info->is_external);
 }
 
@@ -94,6 +95,8 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         // offset aliasing or aliasing through different buffer objects backed
         // by the same allocation is not currently detected.
         input = this->copy(input);
+    } else {
+        output = this->copy(input, output);
     }
     Tensor prev_recv = NullTensor;
     Tensor cumulate = output;
@@ -160,9 +163,7 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
 
     // Copy external input into an internal buffer so it resides in mscclpp
     // registered memory. Internal ARK tensors are already registered.
-    auto input_info =
-        BufferRegistry::get_instance().get(input.ref()->buffer()->id());
-    if (input.is_external() || (input_info && input_info->is_external)) {
+    if (is_registered_external(input)) {
         input = this->copy(input);
     }
 
