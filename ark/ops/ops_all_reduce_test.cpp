@@ -537,9 +537,9 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
     }
     {
         ark::Model model(0, 2);
-        ark::Tensor base = model.tensor({128, 1025}, ark::FP16);
-        ark::Tensor tns = model.refer(base, {128, 1024}, {1025, 1}, {0, 0},
-                                      {128, 1024});
+        ark::Tensor base = model.tensor({129, 1024}, ark::FP16);
+        ark::Tensor tns = model.refer(base, {128, 1024}, {129, 1024},
+                                      {0, 0}, {128, 1024});
         model.all_reduce(tns, 0, 2);
 
         PrefillRouteCounts counts = count_prefill_routes(model);
