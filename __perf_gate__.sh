@@ -5,12 +5,15 @@ set -euo pipefail
 export ARK_ROOT
 export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 
-head_sha=$(git -C .. rev-parse HEAD)
-target_ms=$(python3 - <<'PY'
-import importlib.util
-import pathlib
+source_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+bench_py="$source_root/examples/qwen3/bench_allreduce.py"
 
-path = pathlib.Path("../examples/qwen3/bench_allreduce.py")
+head_sha=$(git -C "$source_root" rev-parse HEAD)
+target_ms=$(python3 - "$bench_py" <<'PY'
+import importlib.util
+import sys
+
+path = sys.argv[1]
 spec = importlib.util.spec_from_file_location("bench_allreduce", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -21,8 +24,8 @@ PY
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 status=0
-python3 ../examples/qwen3/bench_allreduce.py --world-size 2 --shape all >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-python3 ../examples/qwen3/bench_allreduce.py --world-size 8 --shape all >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
+python3 "$bench_py" --world-size 2 --shape all >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
+python3 "$bench_py" --world-size 8 --shape all >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
 read -r ark_ms parse_status < <(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" "$head_sha" "$target_ms" <<'PY'
 import re
