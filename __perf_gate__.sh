@@ -2,6 +2,11 @@
 set -euo pipefail
 
 : "${ARK_ROOT:=$PWD}"
+if ! compgen -G "$ARK_ROOT/python/ark/core*.so" >/dev/null; then
+    if compgen -G "$PWD/build/python/ark/core*.so" >/dev/null; then
+        ARK_ROOT="$PWD/build"
+    fi
+fi
 export ARK_ROOT
 export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 
