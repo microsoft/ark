@@ -679,9 +679,10 @@ def all_reduce_route(
     """
     Return the selected all-reduce route without adding a communication op.
 
-    ``auto`` preserves the decode packet route and uses the ring route as the
-    covered prefill fallback. Explicit ``packet``/``decode`` requests fail
-    closed when the tensor shape cannot use the packet kernel.
+    ``route`` may be ``auto``, ``packet``, or ``ring``. ``auto`` returns
+    ``packet`` for small packet-compatible tensors and ``ring`` otherwise.
+    Explicit ``packet`` requests fail closed when the tensor shape cannot use
+    the packet kernel.
     """
     input = _ensure_ark(input)
     return Model.get_model().all_reduce_route(
@@ -705,8 +706,8 @@ def all_reduce_routed(
         rank (int): The rank of the current process.
         world_size (int): The total number of processes.
         output (Tensor, optional): The output tensor.
-        route (str, optional): ``auto``, ``decode``, ``prefill``, ``packet``,
-            or ``ring``. Defaults to ``auto``.
+        route (str, optional): ``auto``, ``packet``, or ``ring``. Defaults to
+            ``auto``.
         name (str, optional): The operation name. Defaults to ``""``.
 
     Returns:

@@ -2,6 +2,7 @@
 # Licensed under the MIT license.
 
 from common import ark, pytest_ark
+import pytest
 
 
 @pytest_ark()
@@ -241,3 +242,15 @@ def test_ops_all_reduce_route():
 
     odd = ark.tensor([1023], ark.fp16)
     assert ark.all_reduce_route(odd, rank=0, world_size=2) == "ring"
+    with pytest.raises(ark.ModelError):
+        ark.all_reduce_route(odd, rank=0, world_size=2, route="packet")
+
+    for invalid_rank in (-1, 2):
+        with pytest.raises(ark.ModelError):
+            ark.all_reduce_route(decode, rank=invalid_rank, world_size=2)
+        with pytest.raises(ark.ModelError):
+            ark.all_reduce_routed(
+                decode, rank=invalid_rank, world_size=2, route="ring"
+            )
+        with pytest.raises(ark.ModelError):
+            ark.all_reduce_packet(decode, rank=invalid_rank, world_size=2)

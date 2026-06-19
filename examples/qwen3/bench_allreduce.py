@@ -56,7 +56,7 @@ x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 x_ark = ark.Tensor.from_torch(x)
 selected_route = ark.all_reduce_route(x_ark, rank, world_size, route="auto")
-result = ark.all_reduce_routed(x_ark, rank, world_size, route="auto")
+result = ark.all_reduce_routed(x_ark, rank, world_size, route=selected_route)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)

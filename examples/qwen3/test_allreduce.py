@@ -77,7 +77,7 @@ torch.cuda.synchronize(rank)
 # Build ARK graph (no GPU kernel launched yet).
 x_ark = ark.Tensor.from_torch(x)
 selected_route = ark.all_reduce_route(x_ark, rank, world_size, route=route)
-result = ark.all_reduce_routed(x_ark, rank, world_size, route=route)
+result = ark.all_reduce_routed(x_ark, rank, world_size, route=selected_route)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -194,29 +194,6 @@ def _run_allreduce_test(
         assert result_json["route"] == expected_route
 
 
-# ---------- Route observability ----------
-
-
-def test_allreduce_route_observability():
-    """Qwen3 decode routes to packet; prefill routes to ring fallback."""
-    import ark
-
-    ark.init()
-    ark.set_rank(0)
-    ark.set_world_size(8)
-
-    decode = ark.tensor([4096], ark.fp16)
-    assert ark.all_reduce_route(decode, rank=0, world_size=8) == "packet"
-
-    prefill = ark.tensor([2048 * 4096], ark.fp16)
-    assert ark.all_reduce_route(prefill, rank=0, world_size=8) == "ring"
-
-    odd = ark.tensor([1023], ark.fp16)
-    assert ark.all_reduce_route(odd, rank=0, world_size=2) == "ring"
-    with pytest.raises(ark.ModelError):
-        ark.all_reduce_route(odd, rank=0, world_size=2, route="packet")
-
-
 # ---------- Decode shape (1, 4096) = 4096 elements ----------
 
 
@@ -224,6 +201,12 @@ def test_allreduce_route_observability():
 def test_allreduce_decode_tp2():
     """Decode (1,4096) all-reduce at TP=2 uses packet."""
     _run_allreduce_test(world_size=2, n_elements=4096, expected_route="packet")
+
+
+@pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
+def test_allreduce_small_ring_tp2():
+    """Small all-reduce above the auto-packet threshold uses ring."""
+    _run_allreduce_test(world_size=2, n_elements=32768, expected_route="ring")
 
 
 @pytest.mark.skipif(
@@ -244,7 +227,9 @@ def test_allreduce_decode_tp8():
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_prefill_tp2():
     """Prefill (2048,4096) all-reduce at TP=2 uses ring fallback."""
-    _run_allreduce_test(world_size=2, n_elements=2048 * 4096, expected_route="ring")
+    _run_allreduce_test(
+        world_size=2, n_elements=2048 * 4096, expected_route="ring"
+    )
 
 
 @pytest.mark.skipif(
@@ -253,4 +238,6 @@ def test_allreduce_prefill_tp2():
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_prefill_tp8():
     """Prefill (2048,4096) all-reduce at TP=8 uses ring fallback."""
-    _run_allreduce_test(world_size=8, n_elements=2048 * 4096, expected_route="ring")
+    _run_allreduce_test(
+        world_size=8, n_elements=2048 * 4096, expected_route="ring"
+    )

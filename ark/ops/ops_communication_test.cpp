@@ -572,8 +572,7 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
     {
         ark::Model model(0, 8);
         ark::Tensor decode = model.tensor({4096}, ark::FP16);
-        UNITTEST_TRUE(model.all_reduce_route(decode, 0, 8, "auto") ==
-                      "packet");
+        UNITTEST_TRUE(model.all_reduce_route(decode, 0, 8, "auto") == "packet");
         ark::Tensor decode_result = model.all_reduce_routed(decode, 0, 8);
         UNITTEST_FALSE(decode_result.is_null());
 
@@ -591,8 +590,7 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
     {
         ark::Model model(0, 8);
         ark::Tensor prefill = model.tensor({2048 * 4096}, ark::FP16);
-        UNITTEST_TRUE(model.all_reduce_route(prefill, 0, 8, "auto") ==
-                      "ring");
+        UNITTEST_TRUE(model.all_reduce_route(prefill, 0, 8, "auto") == "ring");
         ark::Tensor prefill_result = model.all_reduce_routed(prefill, 0, 8);
         UNITTEST_FALSE(prefill_result.is_null());
 
@@ -615,9 +613,9 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         ark::Model model(0, 2);
         ark::Tensor odd = model.tensor({1023}, ark::FP16);
         UNITTEST_TRUE(model.all_reduce_route(odd, 0, 2, "auto") == "ring");
-        UNITTEST_THROW(model.all_reduce_routed(odd, 0, 2, ark::NullTensor,
-                                               "packet"),
-                       ark::ModelError);
+        UNITTEST_THROW(
+            model.all_reduce_routed(odd, 0, 2, ark::NullTensor, "packet"),
+            ark::ModelError);
     }
     // Single-GPU model-level test: construct the fused allreduce op and
     // verify impl_name / impl_args / default_config produce valid output.
@@ -714,6 +712,21 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         ark::Model model(0, 1);
         ark::Tensor tns = model.tensor({1024}, ark::FP16);
         UNITTEST_THROW(model.all_reduce_packet(tns, 0, 1), ark::ModelError);
+    }
+    // Verify invalid ranks are rejected before graph construction.
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        UNITTEST_THROW(model.all_reduce_route(tns, -1, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_route(tns, 2, 2), ark::ModelError);
+        UNITTEST_THROW(
+            model.all_reduce_routed(tns, -1, 2, ark::NullTensor, "ring"),
+            ark::ModelError);
+        UNITTEST_THROW(
+            model.all_reduce_routed(tns, 2, 2, ark::NullTensor, "ring"),
+            ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_packet(tns, -1, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_packet(tns, 2, 2), ark::ModelError);
     }
     // Verify non-divisible tensor size is rejected.
     {

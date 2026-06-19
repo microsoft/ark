@@ -271,8 +271,8 @@ class Model : public ModelGraph {
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
-    // Route selector for Qwen3 all-reduce call sites. Returns "packet" for
-    // decode-sized messages and "ring" for the covered prefill fallback.
+    // Route selector for all-reduce. "auto" returns "packet" for small
+    // packet-compatible tensors and "ring" otherwise.
     std::string all_reduce_route(Tensor input, int rank, int rank_num,
                                  const std::string &route = "auto");
     Tensor all_reduce_routed(Tensor input, int rank, int rank_num,

@@ -9,6 +9,17 @@ namespace {
 
 constexpr size_t kAutoPacketMaxBytes = 32 << 10;
 
+void require_valid_all_reduce_rank(int rank, int rank_num,
+                                   const char *op_name) {
+    if (rank_num < 2) {
+        ERR(ark::ModelError, op_name, " requires rank_num >= 2");
+    }
+    if (rank < 0 || rank >= rank_num) {
+        ERR(ark::ModelError, op_name,
+            " requires rank to satisfy 0 <= rank < rank_num");
+    }
+}
+
 bool all_reduce_packet_supported(ark::Tensor input, int rank_num) {
     if (rank_num < 2) {
         return false;
@@ -22,10 +33,9 @@ bool all_reduce_packet_supported(ark::Tensor input, int rank_num) {
     return input.shape().nelems() % divisor == 0;
 }
 
-void require_all_reduce_packet_supported(ark::Tensor input, int rank_num) {
-    if (rank_num < 2) {
-        ERR(ark::ModelError, "all_reduce_packet requires rank_num >= 2");
-    }
+void require_all_reduce_packet_supported(ark::Tensor input, int rank,
+                                         int rank_num) {
+    require_valid_all_reduce_rank(rank, rank_num, "all_reduce_packet");
     size_t dtype_bytes = input.data_type().bytes();
     if (dtype_bytes == 0 || sizeof(uint32_t) % dtype_bytes != 0) {
         ERR(ark::ModelError, "all_reduce_packet: unsupported data type ",
@@ -85,11 +95,9 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     return cumulate;
 }
 
-std::string Model::all_reduce_route(Tensor input, int, int rank_num,
+std::string Model::all_reduce_route(Tensor input, int rank, int rank_num,
                                     const std::string &route) {
-    if (rank_num < 2) {
-        ERR(ModelError, "all_reduce_route requires rank_num >= 2");
-    }
+    require_valid_all_reduce_rank(rank, rank_num, "all_reduce_route");
 
     std::string requested = route.empty() ? "auto" : route;
     if (requested == "auto") {
@@ -100,14 +108,15 @@ std::string Model::all_reduce_route(Tensor input, int, int rank_num,
         }
         return "ring";
     }
-    if (requested == "decode" || requested == "packet") {
-        require_all_reduce_packet_supported(input, rank_num);
+    if (requested == "packet") {
+        require_all_reduce_packet_supported(input, rank, rank_num);
         return "packet";
     }
-    if (requested == "prefill" || requested == "ring") {
+    if (requested == "ring") {
         return "ring";
     }
     ERR(ModelError, "unknown all_reduce route: ", requested);
+    return "";
 }
 
 Tensor Model::all_reduce_routed(Tensor input, int rank, int rank_num,
@@ -121,11 +130,12 @@ Tensor Model::all_reduce_routed(Tensor input, int rank, int rank_num,
         return this->all_reduce(input, rank, rank_num, output, name);
     }
     ERR(ModelError, "unknown selected all_reduce route: ", selected);
+    return NullTensor;
 }
 
 Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
                                 Tensor output, const std::string &) {
-    require_all_reduce_packet_supported(input, rank_num);
+    require_all_reduce_packet_supported(input, rank, rank_num);
 
     size_t nelems = input.shape().nelems();
     size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
