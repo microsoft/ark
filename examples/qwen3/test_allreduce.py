@@ -68,7 +68,9 @@ def test_subprocess_env_prefers_ark_root_python(monkeypatch, tmp_path):
     repo_root.mkdir()
 
     monkeypatch.setattr(qwen3_env, "_REPO_ROOT", str(repo_root))
-    monkeypatch.setattr(qwen3_env.importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(
+        qwen3_env.importlib.util, "find_spec", lambda name: None
+    )
     monkeypatch.setattr(sys, "path", [str(source_python)])
     monkeypatch.setenv("ARK_ROOT", str(build_root))
     monkeypatch.setenv("PYTHONPATH", str(source_python))
@@ -94,7 +96,9 @@ def test_subprocess_env_skips_source_only_inherited_path(monkeypatch, tmp_path):
     repo_root.mkdir()
 
     monkeypatch.setattr(qwen3_env, "_REPO_ROOT", str(repo_root))
-    monkeypatch.setattr(qwen3_env.importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(
+        qwen3_env.importlib.util, "find_spec", lambda name: None
+    )
     monkeypatch.setattr(sys, "path", [str(source_python), str(build_python)])
     monkeypatch.delenv("ARK_ROOT", raising=False)
     monkeypatch.setenv(
