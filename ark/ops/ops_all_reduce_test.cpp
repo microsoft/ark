@@ -422,7 +422,7 @@ struct AllReduceRouteCounts {
     int sm_send_count = 0;
     int sm_reduce_count = 0;
     int recv_nowait_count = 0;
-    int proxy_device_sync_count = 0;
+    int sm_device_sync_count = 0;
 };
 
 ark::Json effective_config(const ark::ModelNodeRef &node) {
@@ -465,8 +465,8 @@ void count_all_reduce_route_node(const ark::ModelNodeRef &node,
         ++counts.recv_nowait_count;
     }
     if (op->type() == ark::ModelOpT::from_name("DeviceSync") &&
-        cfg.contains("ChannelType") && cfg.at("ChannelType") == "Proxy") {
-        ++counts.proxy_device_sync_count;
+        cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
+        ++counts.sm_device_sync_count;
     }
 }
 
@@ -497,7 +497,7 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
         UNITTEST_EQ(counts.sm_send_count, 1);
         UNITTEST_EQ(counts.sm_reduce_count, 1);
         UNITTEST_EQ(counts.recv_nowait_count, 1);
-        UNITTEST_EQ(counts.proxy_device_sync_count, 2);
+        UNITTEST_EQ(counts.sm_device_sync_count, 2);
     }
     {
         ark::Model model(0, 2);

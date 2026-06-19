@@ -171,6 +171,10 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
                                 {"NumWarps", 1},
                                 {"SramBytes", 0},
                                 {"Wait", false}};
+    Json prefill_sync_config = {{"ChannelType", "Sm"},
+                                {"NumTasks", 1},
+                                {"NumWarps", 1},
+                                {"SramBytes", 0}};
 
     int n_peers = gpu_num - 1;
     Tensor scratch = this->tensor({nelems_per_rank_dim * n_peers},
@@ -192,9 +196,14 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     }
 
     Tensor sends_done = this->identity(reshaped_input, send_deps);
-    // Use the default Proxy DeviceSync as an inter-rank barrier independent of
-    // the SM data movement in the large-message path.
-    Tensor scatter_sync = this->device_sync(sends_done, gpu_id, gpu_num);
+    // Keep the large-message barriers on the same SM channel as the bulk
+    // scatter/gather path. Proxy DeviceSync dominates prefill latency.
+    Tensor scatter_sync;
+    {
+        ark::PlannerContext ctx(*this);
+        ctx.config(prefill_sync_config.dump());
+        scatter_sync = this->device_sync(sends_done, gpu_id, gpu_num);
+    }
     Tensor local_input = this->identity(sharded_inputs[gpu_id], {scatter_sync});
 
     std::vector<Tensor> peer_outputs;
@@ -228,7 +237,12 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     }
 
     Tensor gather_done = this->identity(local_reduced, recv_deps);
-    Tensor gather_sync = this->device_sync(gather_done, gpu_id, gpu_num);
+    Tensor gather_sync;
+    {
+        ark::PlannerContext ctx(*this);
+        ctx.config(prefill_sync_config.dump());
+        gather_sync = this->device_sync(gather_done, gpu_id, gpu_num);
+    }
     Tensor result = this->identity(collective_output, {gather_sync});
     if (!final_output.is_null() &&
         final_output.ref()->buffer()->id() !=
