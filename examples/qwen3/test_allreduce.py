@@ -59,6 +59,7 @@ from ark.executor import Executor
 rank = int(sys.argv[1])
 world_size = int(sys.argv[2])
 n_elements = int(sys.argv[3])
+expected_route = sys.argv[4]
 
 ark.init()
 ark.set_rank(rank)
@@ -74,8 +75,16 @@ torch.cuda.synchronize(rank)
 
 # Build ARK graph (no GPU kernel launched yet).
 # Decode-sized inputs dispatch to the packet path; prefill-sized inputs dispatch
-# to reduce-scatter plus all-gather.
+# to reduce-scatter plus all-gather. Unsupported large shapes use fallback.
 result = ark.all_reduce(x, rank, world_size)
+model_text = ark.Model.get_model().serialize(False)
+if "AllReducePacketFused" in model_text:
+    route = "packet"
+elif "all_reduce_prefill_reduce_scatter" in model_text:
+    route = "prefill"
+else:
+    route = "fallback"
+route_ok = expected_route == "any" or route == expected_route
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -98,7 +107,7 @@ for r in range(world_size):
     expected += torch.randn(n_elements, dtype=torch.float16)
 
 # FP16 all-reduce may accumulate rounding; use relaxed tolerance.
-close = torch.allclose(result_cpu, expected, rtol=1e-2, atol=1e-2)
+close = route_ok and torch.allclose(result_cpu, expected, rtol=1e-2, atol=1e-2)
 
 # Report result as JSON on stdout (only rank 0 for simplicity).
 if rank == 0:
@@ -107,6 +116,8 @@ if rank == 0:
         "rank": rank,
         "world_size": world_size,
         "n_elements": n_elements,
+        "route": route,
+        "expected_route": expected_route,
         "pass": close,
         "max_diff": max_diff,
     }))
@@ -126,7 +137,12 @@ def _tail(data, limit=500):
     return data.decode(errors="replace").strip()[-limit:]
 
 
-def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
+def _run_allreduce_test(
+    world_size: int,
+    n_elements: int,
+    expected_route: str = "any",
+    timeout: int = 120,
+):
     """Spawn *world_size* workers and assert all-reduce correctness."""
     procs = []
     for rank in range(world_size):
@@ -139,6 +155,7 @@ def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
                     str(rank),
                     str(world_size),
                     str(n_elements),
+                    expected_route,
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -177,6 +194,7 @@ def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
 
     assert not errors, "\n".join(errors)
     assert result_json is not None, "rank 0 produced no output"
+    assert result_json["route"] == expected_route or expected_route == "any"
     assert result_json[
         "pass"
     ], f"allclose failed: max_diff={result_json['max_diff']}"
@@ -188,7 +206,7 @@ def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_decode_tp2():
     """Decode (1,4096) all-reduce at TP=2."""
-    _run_allreduce_test(world_size=2, n_elements=4096)
+    _run_allreduce_test(world_size=2, n_elements=4096, expected_route="packet")
 
 
 @pytest.mark.skipif(
@@ -197,7 +215,16 @@ def test_allreduce_decode_tp2():
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_decode_tp8():
     """Decode (1,4096) all-reduce at TP=8."""
-    _run_allreduce_test(world_size=8, n_elements=4096)
+    _run_allreduce_test(world_size=8, n_elements=4096, expected_route="packet")
+
+
+# ---------- Fallback shape: large but not SM-tile aligned ----------
+
+
+@pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
+def test_allreduce_fallback_tp2():
+    """Fallback all-reduce at TP=2 for a tile-misaligned large tensor."""
+    _run_allreduce_test(world_size=2, n_elements=77824, expected_route="fallback")
 
 
 # ---------- Prefill shape (2048, 4096) = 8388608 elements ----------
@@ -209,7 +236,9 @@ def test_allreduce_decode_tp8():
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_prefill_tp2():
     """Prefill (2048,4096) all-reduce at TP=2."""
-    _run_allreduce_test(world_size=2, n_elements=2048 * 4096)
+    _run_allreduce_test(
+        world_size=2, n_elements=2048 * 4096, expected_route="prefill"
+    )
 
 
 @pytest.mark.skipif(
@@ -218,4 +247,6 @@ def test_allreduce_prefill_tp2():
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_prefill_tp8():
     """Prefill (2048,4096) all-reduce at TP=8."""
-    _run_allreduce_test(world_size=8, n_elements=2048 * 4096)
+    _run_allreduce_test(
+        world_size=8, n_elements=2048 * 4096, expected_route="prefill"
+    )

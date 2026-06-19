@@ -554,6 +554,11 @@ ark::unittest::State test_all_reduce_large_dispatch_8gpus() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_all_reduce_fallback_dispatch_2gpus() {
+    test_all_reduce_internal<2>(77824);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
@@ -564,6 +569,7 @@ int main() {
     UNITTEST(test_all_reduce_size_dispatch_model);
     UNITTEST(test_all_reduce_large_dispatch_2gpus);
     UNITTEST(test_all_reduce_large_dispatch_8gpus);
+    UNITTEST(test_all_reduce_fallback_dispatch_2gpus);
     UNITTEST(test_all_reduce_sm_4gpus);
     UNITTEST(test_all_reduce_sm_8gpus);
     UNITTEST(test_all_reduce_inplace_2gpus);
