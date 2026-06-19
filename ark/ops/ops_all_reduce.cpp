@@ -61,14 +61,29 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         return ring_all_reduce();
     }
 
+    auto has_flattenable_layout = [](const Tensor &tensor) {
+        Dims strides = tensor.strides();
+        Dims padded_shape = tensor.padded_shape();
+        Dims offsets = tensor.offsets();
+        if (strides != padded_shape) {
+            return false;
+        }
+        for (auto offset : offsets.vector()) {
+            if (offset != 0) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     size_t nelems = input.shape().nelems();
     size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
     size_t packet_alignment = elems_per_uint32 * 2 * gpu_num;
-    constexpr size_t large_message_threshold_bytes = 153600;
+    constexpr size_t kLargeMessageThresholdBytes = 153600;
     bool packet_supported = packet_alignment != 0 &&
                             (nelems % packet_alignment) == 0 &&
                             !is_registered_external(output);
-    if (input.ref()->shape_bytes() <= large_message_threshold_bytes) {
+    if (input.ref()->shape_bytes() <= kLargeMessageThresholdBytes) {
         if (packet_supported) {
             if (!output.is_null() && output.ref()->buffer()->id() ==
                                          input.ref()->buffer()->id()) {
@@ -79,13 +94,19 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         return ring_all_reduce();
     }
 
+    // Large route size: shard evenly across ranks.
     if (nelems % gpu_num != 0) {
         return ring_all_reduce();
     }
 
-    constexpr size_t sm_tile_elems = 64 * 8 * 8;
+    constexpr size_t kPrefillSmTileElems = 64 * 8 * 8;
     size_t nelems_per_rank = nelems / gpu_num;
-    if ((nelems_per_rank % sm_tile_elems) != 0) {
+    // Large route tile: each rank shard must fill SM reduce tiles.
+    if ((nelems_per_rank % kPrefillSmTileElems) != 0) {
+        return ring_all_reduce();
+    }
+    // Large route peers: RecvReduceSend kernels support at most 7 peers.
+    if (gpu_num - 1 > kMaxRecvReduceSendPeers) {
         return ring_all_reduce();
     }
 
@@ -101,6 +122,12 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     if (collective_output.is_null() ||
         is_registered_external(collective_output)) {
         collective_output = this->tensor(input.shape(), input.data_type());
+    }
+
+    // Large route layout: tensors reshaped for sharding must be contiguous.
+    if (!has_flattenable_layout(input) ||
+        !has_flattenable_layout(collective_output)) {
+        return ring_all_reduce();
     }
 
     Tensor reshaped_input = this->reshape(input, {static_cast<DimType>(nelems)});

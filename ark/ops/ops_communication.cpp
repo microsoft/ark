@@ -10,7 +10,6 @@ static const std::map<std::string, size_t> packet_payload_size_map = {
     {"mscclpp::LL8Packet", 4},
     {"mscclpp::LL16Packet", 8},
 };
-static const int MAX_NUM_PEERS = 7;
 }  // namespace
 
 namespace ark {
@@ -383,6 +382,10 @@ ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
     : ModelOp("RecvReduceSendPacket") {
     check_null(input);
     uint32_t n_remote_ranks = remote_ranks.size();
+    if (n_remote_ranks > kMaxRecvReduceSendPeers) {
+        ERR(ModelError, "too many RecvReduceSend peers: ", n_remote_ranks,
+            ", maximum: ", kMaxRecvReduceSendPeers);
+    }
     // Need to check the scratch buffers are contiguous
     if (scratch) {
         if (scratch->buffer()->rank() != rank &&
@@ -450,7 +453,7 @@ std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args(
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
         args.push_back(ModelOffset(write_tensors_[i]));
     }
-    for (int i = write_tensors_.size() - 1; i < MAX_NUM_PEERS; ++i) {
+    for (int i = write_tensors_.size() - 1; i < kMaxRecvReduceSendPeers; ++i) {
         args.push_back(0L);
     }
     return args;
@@ -578,6 +581,10 @@ ModelOpRecvReduceSend::ModelOpRecvReduceSend(
     : ModelOp("RecvReduceSend") {
     check_null(input);
     uint32_t n_remote_ranks = remote_ranks.size();
+    if (n_remote_ranks > kMaxRecvReduceSendPeers) {
+        ERR(ModelError, "too many RecvReduceSend peers: ", n_remote_ranks,
+            ", maximum: ", kMaxRecvReduceSendPeers);
+    }
     // Need to check the scratch buffers are contiguous
     if (scratch) {
         if (scratch->buffer()->rank() != rank &&
@@ -643,7 +650,7 @@ std::vector<ModelOpArg> ModelOpRecvReduceSend::impl_args(
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
         args.push_back(ModelOffset(write_tensors_[i]));
     }
-    for (int i = write_tensors_.size() - 1; i < MAX_NUM_PEERS; ++i) {
+    for (int i = write_tensors_.size() - 1; i < kMaxRecvReduceSendPeers; ++i) {
         args.push_back(0L);
     }
     return args;

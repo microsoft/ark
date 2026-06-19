@@ -417,6 +417,29 @@ ark::unittest::State test_all_reduce_packet_fused_2gpus() {
     return ark::unittest::SUCCESS;
 }
 
+struct PrefillRouteCounts {
+    int sm_send_count = 0;
+    int sm_reduce_count = 0;
+};
+
+PrefillRouteCounts count_prefill_routes(ark::Model &model) {
+    PrefillRouteCounts counts;
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) continue;
+        auto cfg = op->default_config(ark::ARCH_CUDA_80);
+        if (op->type() == ark::ModelOpT::from_name("Send") &&
+            cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
+            ++counts.sm_send_count;
+        }
+        if (op->type() == ark::ModelOpT::from_name("RecvReduceSend") &&
+            cfg.contains("NumWarps") && cfg.at("NumWarps").get<int>() == 8) {
+            ++counts.sm_reduce_count;
+        }
+    }
+    return counts;
+}
+
 ark::unittest::State test_all_reduce_size_dispatch_model() {
     {
         ark::Model model(0, 2);
@@ -502,6 +525,26 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
         UNITTEST_EQ(packet_count, 0);
         UNITTEST_EQ(sm_send_count, 0);
         UNITTEST_EQ(sm_reduce_count, 0);
+    }
+    {
+        ark::Model model(0, 9);
+        ark::Tensor tns = model.tensor({110592}, ark::FP16);
+        model.all_reduce(tns, 0, 9);
+
+        PrefillRouteCounts counts = count_prefill_routes(model);
+        UNITTEST_EQ(counts.sm_send_count, 0);
+        UNITTEST_EQ(counts.sm_reduce_count, 0);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor base = model.tensor({128, 1025}, ark::FP16);
+        ark::Tensor tns = model.refer(base, {128, 1024}, {1025, 1}, {0, 0},
+                                      {128, 1024});
+        model.all_reduce(tns, 0, 2);
+
+        PrefillRouteCounts counts = count_prefill_routes(model);
+        UNITTEST_EQ(counts.sm_send_count, 0);
+        UNITTEST_EQ(counts.sm_reduce_count, 0);
     }
     return ark::unittest::SUCCESS;
 }

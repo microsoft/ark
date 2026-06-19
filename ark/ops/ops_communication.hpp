@@ -8,6 +8,8 @@
 
 namespace ark {
 
+inline constexpr int kMaxRecvReduceSendPeers = 7;
+
 class ModelOpSend : public ModelOp {
    public:
     ModelOpSend() = default;
