@@ -15,6 +15,7 @@ real ARK TP slice latency; the perf gate fails when the ratio exceeds 1.0.
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 
@@ -28,6 +29,7 @@ except ImportError:
 HIDDEN_SIZE = 4096
 _TP_TARGET_MS = 214.69 / 657.0
 _SENTINEL_MS = 999999.0
+_PACKET_ROUTE = "all_reduce_packet"
 
 _WORKER_SCRIPT = r'''
 """Worker: time one ARK row-parallel TP decode slice."""
@@ -104,13 +106,35 @@ def _tail(data, limit=500):
     return data.decode(errors="replace").strip()[-limit:]
 
 
+def _resolve_head_sha():
+    """Return the current source SHA, or ``unknown`` when unavailable."""
+    for name in ("ARK_HEAD_SHA", "GITHUB_SHA", "CI_COMMIT_SHA"):
+        value = os.environ.get(name, "").strip()
+        if re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
+            return value
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+    )
+    try:
+        value = subprocess.check_output(
+            ["git", "-C", repo_root, "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    if re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
+        return value
+    return "unknown"
+
+
 def run_bench(world_size, timeout, hidden_size):
-    """Return (ark_ms, failed) for one TP decode benchmark."""
+    """Return (ark_ms, route, failed) for one TP decode benchmark."""
     try:
         env = _subprocess_env(world_size)
     except Exception as exc:  # noqa: BLE001 - fail closed with PERF_GATE.
         print(f"ERROR: cannot build worker env: {exc}", file=sys.stderr)
-        return _SENTINEL_MS, True
+        return _SENTINEL_MS, "unknown", True
 
     failed = False
     procs = []
@@ -173,17 +197,19 @@ def run_bench(world_size, timeout, hidden_size):
             proc.kill()
             proc.wait()
 
+    route = results[0].get("route", "unknown") if results else "unknown"
     if len(results) != world_size:
         failed = True
-    if any(r.get("route") != "all_reduce_packet" for r in results):
+    if any(r.get("route") != _PACKET_ROUTE for r in results):
         failed = True
+        route = "unknown"
         print(
             "ERROR: worker did not report all_reduce_packet route",
             file=sys.stderr,
         )
     if failed:
-        return _SENTINEL_MS, True
-    return max(r["latency_ms"] for r in results), False
+        return _SENTINEL_MS, route, True
+    return max(r["latency_ms"] for r in results), route, False
 
 
 def main():
@@ -198,17 +224,22 @@ def main():
     parser.add_argument("--hidden-size", type=int, default=HIDDEN_SIZE)
     args = parser.parse_args()
 
-    ark_ms, failed = run_bench(
+    ark_ms, route, failed = run_bench(
         world_size=args.world_size,
         timeout=args.timeout,
         hidden_size=args.hidden_size,
     )
+    head_sha = _resolve_head_sha()
+    if head_sha == "unknown" or route != _PACKET_ROUTE:
+        failed = True
     ratio = ark_ms / _TP_TARGET_MS
     print(
         f"PERF_GATE name=tp"
         f" ark_ms={ark_ms:.4f}"
         f" sglang_ms={_TP_TARGET_MS:.4f}"
         f" ratio={ratio:.4f}"
+        f" route={route}"
+        f" head_sha={head_sha}"
     )
     if failed:
         raise SystemExit(1)
