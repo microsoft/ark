@@ -165,46 +165,57 @@ def _subprocess_env(world_size: int) -> dict:
             break
 
     # --- Fallback: repo build dirs, scikit-build wheel dirs, or python ---
-    fallback_candidates = [
-        os.path.join(_REPO_ROOT, "build", "python"),
-        os.path.join(_REPO_ROOT, "build-release", "python"),
-    ]
-    fallback_candidates.extend(
-        sorted(glob.glob(os.path.join(_REPO_ROOT, "build", "*", "python")))
-    )
-    fallback_candidates.extend(
-        sorted(
-            glob.glob(os.path.join(_REPO_ROOT, "build-release", "*", "python"))
-        )
-    )
-    fallback_candidates.extend(
-        sorted(glob.glob(os.path.join(os.sep, "*", "build", "python")))
-    )
-    fallback_candidates.extend(
-        sorted(
-            glob.glob(os.path.join(os.sep, "*", "build-release", "python"))
-        )
-    )
-    fallback_candidates.extend(
-        sorted(
-            glob.glob(os.path.join(os.sep, "*", "build", "*", "python"))
-        )
-    )
-    fallback_candidates.extend(
-        sorted(
-            glob.glob(
-                os.path.join(os.sep, "*", "build-release", "*", "python")
+    # Only use broad filesystem fallbacks when the explicit/imported build
+    # paths did not already identify the compiled ark package.
+    if compiled_ark_parent is None:
+        fallback_candidates = [
+            os.path.join(_REPO_ROOT, "build", "python"),
+            os.path.join(_REPO_ROOT, "build-release", "python"),
+        ]
+        fallback_candidates.extend(
+            sorted(
+                glob.glob(os.path.join(_REPO_ROOT, "build", "*", "python"))
             )
         )
-    )
-    fallback_candidates.append(os.path.join(_REPO_ROOT, "python"))
-    for candidate in fallback_candidates:
-        if _has_compiled_ark(candidate):
-            _append_unique(extra, candidate)
-            if compiled_ark_parent is None:
+        fallback_candidates.extend(
+            sorted(
+                glob.glob(
+                    os.path.join(_REPO_ROOT, "build-release", "*", "python")
+                )
+            )
+        )
+        fallback_candidates.extend(
+            sorted(glob.glob(os.path.join(os.sep, "*", "build", "python")))
+        )
+        fallback_candidates.extend(
+            sorted(
+                glob.glob(os.path.join(os.sep, "*", "build-release", "python"))
+            )
+        )
+        fallback_candidates.extend(
+            sorted(
+                glob.glob(os.path.join(os.sep, "*", "build", "*", "python"))
+            )
+        )
+        fallback_candidates.extend(
+            sorted(
+                glob.glob(
+                    os.path.join(
+                        os.sep, "*", "build-release", "*", "python"
+                    )
+                )
+            )
+        )
+        fallback_candidates.append(os.path.join(_REPO_ROOT, "python"))
+        for candidate in fallback_candidates:
+            if _has_compiled_ark(candidate):
+                _append_unique(extra, candidate)
                 compiled_ark_parent = candidate
-            if resolved_ark_root is None:
-                resolved_ark_root = _build_root_from_python_parent(candidate)
+                if resolved_ark_root is None:
+                    resolved_ark_root = _build_root_from_python_parent(
+                        candidate
+                    )
+                break
 
     if compiled_ark_parent is None:
         raise RuntimeError(
