@@ -1,57 +1,61 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -u -o pipefail
 
 : "${ARK_ROOT:=$PWD}"
 export ARK_ROOT
 export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
 
-target_ms=$(python3 - <<'PY'
-import importlib.util
-import pathlib
-
-path = pathlib.Path("../examples/qwen3/bench_allreduce.py")
-spec = importlib.util.spec_from_file_location("bench_allreduce", path)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-print(f"{module._DECODE_TARGET_MS:.4f}")
-PY
-)
-
+# SGLang PROFILE.md Qwen3 TP=8 attention decode target: 20.93 ms / 640 token-steps.
+target_ms="0.0327"
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
-status=0
-python3 ../examples/qwen3/bench_allreduce.py --world-size 2 --shape decode >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-python3 ../examples/qwen3/bench_allreduce.py --world-size 8 --shape decode >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
-ark_ms=$(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" <<'PY'
+status=0
+python3 ../examples/qwen3/bench_kv_cache_slot.py >"$tmpdir/out" 2>"$tmpdir/err" || status=$?
+
+line=$(python3 - "$tmpdir/out" <<'PY'
 import re
 import sys
 
-values = []
-for name in sys.argv[1:3]:
-    text = open(name, encoding="utf-8").read()
-    match = re.search(r"PERF_GATE name=allreduce\s+ark_ms=([0-9.]+)", text)
-    if match:
-        values.append(float(match.group(1)))
-if int(sys.argv[3]) or len(values) != 2:
-    print("999999.0000")
-else:
-    print(f"{max(values):.4f}")
-PY
+text = open(sys.argv[1], encoding="utf-8").read().splitlines()
+lines = [ln for ln in text if ln.startswith("PERF_GATE ")]
+pattern = re.compile(
+    r"^PERF_GATE name=kv_cache_slot "
+    r"ark_ms=([0-9]+(?:\.[0-9]+)?) "
+    r"sglang_ms=([0-9]+(?:\.[0-9]+)?) "
+    r"ratio=([0-9]+(?:\.[0-9]+)?)$"
 )
-ratio=$(python3 - "$ark_ms" "$target_ms" <<'PY'
+if len(lines) != 1 or pattern.match(lines[0]) is None:
+    raise SystemExit(1)
+print(lines[0])
+PY
+) || line="PERF_GATE name=kv_cache_slot ark_ms=999999.0000 sglang_ms=$target_ms ratio=30581009.1743"
+
+printf '%s\n' "$line"
+python3 - "$line" "$status" "$target_ms" <<'PY'
+import re
 import sys
 
-print(f"{float(sys.argv[1]) / float(sys.argv[2]):.4f}")
-PY
+line = sys.argv[1]
+status = int(sys.argv[2])
+target_ms = float(sys.argv[3])
+match = re.match(
+    r"^PERF_GATE name=kv_cache_slot "
+    r"ark_ms=([0-9]+(?:\.[0-9]+)?) "
+    r"sglang_ms=([0-9]+(?:\.[0-9]+)?) "
+    r"ratio=([0-9]+(?:\.[0-9]+)?)$",
+    line,
 )
-printf 'PERF_GATE name=allreduce ark_ms=%s sglang_ms=%s ratio=%s\n' "$ark_ms" "$target_ms" "$ratio"
-python3 - "$ark_ms" "$target_ms" "$status" <<'PY'
-import sys
-
-ark_ms = float(sys.argv[1])
-target_ms = float(sys.argv[2])
-status = int(sys.argv[3])
-if status or ark_ms >= target_ms:
+if match is None:
+    raise SystemExit(1)
+ark_ms = float(match.group(1))
+sglang_ms = float(match.group(2))
+ratio = float(match.group(3))
+if (
+    status
+    or abs(sglang_ms - target_ms) > 0.00005
+    or ark_ms >= 999999.0
+    or ratio > 1.0
+):
     raise SystemExit(1)
 PY

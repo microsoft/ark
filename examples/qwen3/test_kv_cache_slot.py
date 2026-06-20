@@ -115,6 +115,7 @@ if mode == "last":
 
 if mode == "graph_read":
     max_seq = 4
+    iters = 3
     slot_shape = (2, 3)
     cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16, device="cuda:0")
     token_cpu = torch.arange(1, 7, dtype=torch.float16).reshape(slot_shape)
@@ -130,15 +131,15 @@ if mode == "graph_read":
 
     with ark.Runtime() as rt:
         rt.launch(device_id=0, loop_mode=True)
-        rt.run(iter=1)
+        rt.run(iter=iters)
         rt.stop()
 
     copy_cpu = later_cache_copy.to_torch().cpu()
     position_cpu = position.cpu()
 
     expected = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16)
-    expected[0] = token_cpu
-    ok = torch.equal(copy_cpu, expected) and int(position_cpu.item()) == 1
+    expected[:iters] = token_cpu
+    ok = torch.equal(copy_cpu, expected) and int(position_cpu.item()) == iters
     print(json.dumps({
         "mode": mode,
         "pass": ok,
@@ -236,11 +237,11 @@ def test_kv_cache_slot_updates_last_valid_position():
 
 @pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
 def test_later_graph_op_reads_updated_external_cache():
-    """A later ARK op consumes the cache after the slot update."""
+    """A later ARK op consumes multi-position cache updates."""
     result = _run_worker("graph_read")
 
     assert result["pass"] is True
-    assert result["position"] == 1
+    assert result["position"] == 3
 
 
 @pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
