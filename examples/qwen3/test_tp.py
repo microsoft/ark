@@ -42,7 +42,6 @@ def _gpu_count() -> int:
     return torch.cuda.device_count()
 
 
-
 _WORKER_SCRIPT = r'''
 """Worker: run one ARK row-parallel TP decode slice."""
 import json

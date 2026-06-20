@@ -173,9 +173,7 @@ def _subprocess_env(world_size: int) -> dict:
             os.path.join(_REPO_ROOT, "build-release", "python"),
         ]
         fallback_candidates.extend(
-            sorted(
-                glob.glob(os.path.join(_REPO_ROOT, "build", "*", "python"))
-            )
+            sorted(glob.glob(os.path.join(_REPO_ROOT, "build", "*", "python")))
         )
         fallback_candidates.extend(
             sorted(

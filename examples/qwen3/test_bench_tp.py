@@ -39,9 +39,7 @@ def test_main_emits_single_success_perf_gate(monkeypatch, capsys):
         ),
     )
     monkeypatch.setattr(bench_tp, "_resolve_head_sha", lambda: _VALID_SHA)
-    monkeypatch.setattr(
-        bench_tp, "_resolve_base_sha", lambda: _VALID_BASE_SHA
-    )
+    monkeypatch.setattr(bench_tp, "_resolve_base_sha", lambda: _VALID_BASE_SHA)
 
     bench_tp.main()
 
@@ -197,9 +195,7 @@ def test_main_fails_closed_for_invalid_world_size(monkeypatch, capsys):
     """CLI world-size validation still prints one PERF_GATE line."""
     monkeypatch.setattr(sys, "argv", ["bench_tp.py", "--world-size", "0"])
     monkeypatch.setattr(bench_tp, "_resolve_head_sha", lambda: _VALID_SHA)
-    monkeypatch.setattr(
-        bench_tp, "_resolve_base_sha", lambda: _VALID_BASE_SHA
-    )
+    monkeypatch.setattr(bench_tp, "_resolve_base_sha", lambda: _VALID_BASE_SHA)
 
     with pytest.raises(SystemExit) as exc_info:
         bench_tp.main()
@@ -245,6 +241,49 @@ def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
         "ratio=3060223.3127 route=unknown head_sha=unknown "
         "base_sha=unknown"
     ]
+
+
+def test_perf_gate_wrapper_resolves_bench_relative_to_script(tmp_path):
+    """Shell wrapper finds bench_tp.py when cwd is not the repo root."""
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
+    )
+    argv_file = tmp_path / "argv.txt"
+    fake_python = tmp_path / "python3"
+    fake_python.write_text(
+        "#!/usr/bin/env sh\n"
+        "printf '%s\\n' \"$1\" > \"$ARGV_FILE\"\n"
+        "echo 'PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+        "ratio=0.3060 route=all_reduce_packet head_sha="
+        f"{_VALID_SHA} base_sha={_VALID_BASE_SHA}'\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    env = {
+        **os.environ,
+        "ARGV_FILE": str(argv_file),
+        "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
+
+    result = subprocess.run(
+        ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
+        cwd=tmp_path,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert _perf_gate_lines(result.stdout) == [
+        "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+        f"ratio=0.3060 route=all_reduce_packet head_sha={_VALID_SHA} "
+        f"base_sha={_VALID_BASE_SHA}"
+    ]
+    assert argv_file.read_text(encoding="utf-8").strip() == os.path.join(
+        repo_root, "examples", "qwen3", "bench_tp.py"
+    )
 
 
 def test_run_bench_fails_closed_when_env_resolution_fails(monkeypatch, capsys):
