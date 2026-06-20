@@ -5,7 +5,14 @@ set -uo pipefail
 export ARK_ROOT
 export PYTHONPATH="${PYTHONPATH:-$PWD/python}"
 
-for py in "$PWD/python" "$PWD/build/python" "$PWD"/build/*/python "$PWD"/../build/*/python; do
+for py in \
+    "$PWD/python" \
+    "$PWD/build/python" \
+    "$PWD/build-release/python" \
+    "$PWD"/build/*/python \
+    "$PWD"/build-release/*/python \
+    "$PWD"/../build/*/python \
+    "$PWD"/../build-release/*/python; do
     if ls "$py"/ark/core*.so >/dev/null 2>&1; then
         export PYTHONPATH="$py:$PYTHONPATH"
         export ARK_ROOT="$(dirname "$py")"
@@ -32,4 +39,5 @@ if [ -z "${ARK_HEAD_SHA:-}" ]; then
     fi
 fi
 
+# SGLang target is 214.69 ms / 657 calls = 0.3268 ms in PROFILE.md.
 python3 "$examples_dir/bench_tp.py" --world-size 8 --timeout 600

@@ -121,9 +121,7 @@ def test_run_bench_fails_closed_when_env_resolution_fails(monkeypatch, capsys):
     assert "ERROR: cannot build worker env: no ark" in capsys.readouterr().err
 
 
-def test_run_bench_marks_incomplete_worker_results_unknown(
-    monkeypatch, capsys
-):
+def test_run_bench_marks_incomplete_worker_results_unknown(monkeypatch, capsys):
     """Missing worker JSON forces sentinel latency and unknown route."""
 
     class FakeProcess:
