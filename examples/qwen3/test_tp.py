@@ -81,9 +81,26 @@ x = x_cpu.to(device=f"cuda:{rank}")
 w = w_cpu.to(device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 
+def prove_packet_route(reduce_op):
+    if reduce_op.__name__ != "all_reduce_packet":
+        return "unknown", "unexpected_python_symbol"
+    try:
+        plan = ark.Planner(device_id=rank).plan()
+    except Exception as exc:  # noqa: BLE001 - report unknown route.
+        return "unknown", f"planner_error:{type(exc).__name__}"
+    for task_info in plan.task_infos:
+        for op in task_info.get("Ops", []):
+            if op.get("Type") != "AllReducePacketFused":
+                continue
+            config = op.get("Config", {})
+            if isinstance(config, dict) and "NumProcs" in config:
+                return "all_reduce_packet", "AllReducePacketFused"
+    return "unknown", "unknown"
+
 partial = ark.matmul(x, w)
 reduce_op = ark.all_reduce_packet
 result = reduce_op(partial, rank, world_size)
+route, route_proof = prove_packet_route(reduce_op)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -112,7 +129,8 @@ print(json.dumps({
     "local_hidden": local_hidden,
     "result_shape": list(result_cpu.shape),
     "result_dtype": str(result_cpu.dtype),
-    "route": reduce_op.__name__,
+    "route": route,
+    "route_proof": route_proof,
     "pass": close,
     "max_diff": max_diff,
 }))
@@ -188,6 +206,7 @@ def _run_tp_test(world_size: int, timeout: int = 180):
     assert len(results) == world_size
     for result in results:
         assert result["route"] == "all_reduce_packet"
+        assert result["route_proof"] == "AllReducePacketFused"
         assert result["result_shape"] == [1, HIDDEN_SIZE]
         assert result["result_dtype"] == "torch.float16"
         assert result["pass"], (

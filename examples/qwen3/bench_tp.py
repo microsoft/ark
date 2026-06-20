@@ -33,6 +33,7 @@ HIDDEN_SIZE = 4096
 _TP_TARGET_MS = 214.69 / 657.0
 _SENTINEL_MS = 999999.0
 _PACKET_ROUTE = "all_reduce_packet"
+_PACKET_ROUTE_PROOF = "AllReducePacketFused"
 _BASE_BRANCH = "qwen3-allreduce-bench"
 
 _WORKER_SCRIPT = r'''
@@ -73,9 +74,26 @@ x = x_cpu.to(device=f"cuda:{rank}")
 w = w_cpu.to(device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 
+def prove_packet_route(reduce_op):
+    if reduce_op.__name__ != "all_reduce_packet":
+        return "unknown", "unexpected_python_symbol"
+    try:
+        plan = ark.Planner(device_id=rank).plan()
+    except Exception as exc:  # noqa: BLE001 - report unknown route.
+        return "unknown", f"planner_error:{type(exc).__name__}"
+    for task_info in plan.task_infos:
+        for op in task_info.get("Ops", []):
+            if op.get("Type") != "AllReducePacketFused":
+                continue
+            config = op.get("Config", {})
+            if isinstance(config, dict) and "NumProcs" in config:
+                return "all_reduce_packet", "AllReducePacketFused"
+    return "unknown", "unknown"
+
 partial = ark.matmul(x, w)
 reduce_op = ark.all_reduce_packet
 result = reduce_op(partial, rank, world_size)
+route, route_proof = prove_packet_route(reduce_op)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -93,7 +111,8 @@ print(json.dumps({
     "world_size": world_size,
     "hidden_size": hidden_size,
     "local_hidden": local_hidden,
-    "route": reduce_op.__name__,
+    "route": route,
+    "route_proof": route_proof,
     "latency_ms": round(host_s * 1000.0, 6),
 }))
 sys.stdout.flush()
@@ -239,6 +258,7 @@ def run_bench(world_size, timeout, hidden_size):
             elif not (
                 isinstance(result, dict)
                 and result.get("route") == _PACKET_ROUTE
+                and result.get("route_proof") == _PACKET_ROUTE_PROOF
                 and isinstance(result.get("latency_ms"), (int, float))
                 and not isinstance(result.get("latency_ms"), bool)
                 and math.isfinite(result.get("latency_ms"))

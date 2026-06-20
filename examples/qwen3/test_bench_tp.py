@@ -387,7 +387,9 @@ def test_run_bench_returns_max_latency_for_successful_workers(monkeypatch):
             latency = 0.01 if self.rank == 0 else 0.03
             return (
                 (
-                    '{"route":"all_reduce_packet","latency_ms":'
+                    '{"route":"all_reduce_packet",'
+                    '"route_proof":"AllReducePacketFused",'
+                    '"latency_ms":'
                     f"{latency}}}\n"
                 ).encode(),
                 b"",
@@ -448,7 +450,9 @@ def test_run_bench_marks_incomplete_worker_results_unknown(monkeypatch, capsys):
         def communicate(self, timeout):
             if self.rank == 0:
                 return (
-                    b'{"route":"all_reduce_packet","latency_ms":0.01}\n',
+                    b'{"route":"all_reduce_packet",'
+                    b'"route_proof":"AllReducePacketFused",'
+                    b'"latency_ms":0.01}\n',
                     b"",
                 )
             return b"", b""
@@ -473,6 +477,42 @@ def test_run_bench_marks_incomplete_worker_results_unknown(monkeypatch, capsys):
 
     assert result == (bench_tp._SENTINEL_MS, "unknown", True)
     assert "incomplete worker results" in capsys.readouterr().err
+
+
+def test_run_bench_rejects_worker_result_missing_route_proof(
+    monkeypatch, capsys
+):
+    """Worker JSON must prove the planned packet route."""
+
+    class FakeProcess:
+        returncode = 0
+
+        def communicate(self, timeout):
+            return (
+                b'{"route":"all_reduce_packet","latency_ms":0.01}\n',
+                b"",
+            )
+
+        def kill(self):
+            pass
+
+        def wait(self):
+            pass
+
+    def fake_popen(cmd, stdout, stderr, cwd, env):
+        return FakeProcess()
+
+    monkeypatch.setattr(bench_tp, "_subprocess_env", lambda world_size: {})
+    monkeypatch.setattr(bench_tp.subprocess, "Popen", fake_popen)
+
+    result = bench_tp.run_bench(
+        world_size=2,
+        timeout=1,
+        hidden_size=bench_tp.HIDDEN_SIZE,
+    )
+
+    assert result == (bench_tp._SENTINEL_MS, "unknown", True)
+    assert "invalid worker result schema" in capsys.readouterr().err
 
 
 def test_run_bench_rejects_worker_result_missing_latency(monkeypatch, capsys):
