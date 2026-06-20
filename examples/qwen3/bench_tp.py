@@ -30,6 +30,7 @@ HIDDEN_SIZE = 4096
 _TP_TARGET_MS = 214.69 / 657.0
 _SENTINEL_MS = 999999.0
 _PACKET_ROUTE = "all_reduce_packet"
+_BASE_BRANCH = "qwen3-allreduce-bench"
 
 _WORKER_SCRIPT = r'''
 """Worker: time one ARK row-parallel TP decode slice."""
@@ -106,6 +107,18 @@ def _tail(data, limit=500):
     return data.decode(errors="replace").strip()[-limit:]
 
 
+def _is_sha(value):
+    """Return True when *value* looks like a Git SHA."""
+    return re.fullmatch(r"[0-9a-fA-F]{7,40}", value) is not None
+
+
+def _repo_root():
+    """Return the source repository root for this example file."""
+    return os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+    )
+
+
 def _resolve_head_sha():
     """Return the current source SHA, or ``unknown`` when unavailable."""
     for name in (
@@ -116,21 +129,38 @@ def _resolve_head_sha():
         "GIT_COMMIT",
     ):
         value = os.environ.get(name, "").strip()
-        if re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
+        if _is_sha(value):
             return value
-    repo_root = os.path.normpath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
-    )
     try:
         value = subprocess.check_output(
-            ["git", "-C", repo_root, "rev-parse", "HEAD"],
+            ["git", "-C", _repo_root(), "rev-parse", "HEAD"],
             text=True,
             stderr=subprocess.DEVNULL,
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
-    if re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
+    if _is_sha(value):
         return value
+    return "unknown"
+
+
+def _resolve_base_sha():
+    """Return the PR target branch SHA, or ``unknown`` when unavailable."""
+    for name in ("ARK_BASE_SHA", "GITHUB_BASE_SHA", "BASE_SHA"):
+        value = os.environ.get(name, "").strip()
+        if _is_sha(value):
+            return value
+    for ref in (f"origin/{_BASE_BRANCH}", _BASE_BRANCH):
+        try:
+            value = subprocess.check_output(
+                ["git", "-C", _repo_root(), "rev-parse", ref],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        if _is_sha(value):
+            return value
     return "unknown"
 
 
@@ -241,7 +271,8 @@ def main():
         hidden_size=args.hidden_size,
     )
     head_sha = _resolve_head_sha()
-    if head_sha == "unknown" or route != _PACKET_ROUTE:
+    base_sha = _resolve_base_sha()
+    if head_sha == "unknown" or base_sha == "unknown" or route != _PACKET_ROUTE:
         failed = True
     ratio = ark_ms / _TP_TARGET_MS
     print(
@@ -251,6 +282,7 @@ def main():
         f" ratio={ratio:.4f}"
         f" route={route}"
         f" head_sha={head_sha}"
+        f" base_sha={base_sha}"
     )
     if failed or ratio >= 1.0:
         raise SystemExit(1)

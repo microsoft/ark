@@ -16,6 +16,7 @@ except ImportError:
 
 
 _VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
+_VALID_BASE_SHA = "fedcba9876543210fedcba9876543210fedcba98"
 
 
 def _perf_gate_lines(stdout):
@@ -37,6 +38,9 @@ def test_main_emits_single_success_perf_gate(monkeypatch, capsys):
         ),
     )
     monkeypatch.setattr(bench_tp, "_resolve_head_sha", lambda: _VALID_SHA)
+    monkeypatch.setattr(
+        bench_tp, "_resolve_base_sha", lambda: _VALID_BASE_SHA
+    )
 
     bench_tp.main()
 
@@ -45,6 +49,7 @@ def test_main_emits_single_success_perf_gate(monkeypatch, capsys):
     assert "name=tp" in lines[0]
     assert "route=all_reduce_packet" in lines[0]
     assert f"head_sha={_VALID_SHA}" in lines[0]
+    assert f"base_sha={_VALID_BASE_SHA}" in lines[0]
 
 
 def test_main_fails_closed_with_unknown_route_and_sha(monkeypatch, capsys):
@@ -60,6 +65,7 @@ def test_main_fails_closed_with_unknown_route_and_sha(monkeypatch, capsys):
         ),
     )
     monkeypatch.setattr(bench_tp, "_resolve_head_sha", lambda: "unknown")
+    monkeypatch.setattr(bench_tp, "_resolve_base_sha", lambda: "unknown")
 
     with pytest.raises(SystemExit) as exc_info:
         bench_tp.main()
@@ -70,18 +76,25 @@ def test_main_fails_closed_with_unknown_route_and_sha(monkeypatch, capsys):
     assert "name=tp" in lines[0]
     assert "route=unknown" in lines[0]
     assert "head_sha=unknown" in lines[0]
+    assert "base_sha=unknown" in lines[0]
 
 
 @pytest.mark.parametrize(
-    ("ark_ms", "route", "head_sha"),
+    ("ark_ms", "route", "head_sha", "base_sha"),
     [
-        (0.01, "unknown", _VALID_SHA),
-        (0.01, "all_reduce_packet", "unknown"),
-        (bench_tp._TP_TARGET_MS, "all_reduce_packet", _VALID_SHA),
+        (0.01, "unknown", _VALID_SHA, _VALID_BASE_SHA),
+        (0.01, "all_reduce_packet", "unknown", _VALID_BASE_SHA),
+        (0.01, "all_reduce_packet", _VALID_SHA, "unknown"),
+        (
+            bench_tp._TP_TARGET_MS,
+            "all_reduce_packet",
+            _VALID_SHA,
+            _VALID_BASE_SHA,
+        ),
     ],
 )
 def test_main_fails_closed_for_independent_gate_failures(
-    monkeypatch, capsys, ark_ms, route, head_sha
+    monkeypatch, capsys, ark_ms, route, head_sha, base_sha
 ):
     """Route, SHA, and threshold gates each fail closed independently."""
     monkeypatch.setattr(sys, "argv", ["bench_tp.py"])
@@ -91,6 +104,7 @@ def test_main_fails_closed_for_independent_gate_failures(
         lambda world_size, timeout, hidden_size: (ark_ms, route, False),
     )
     monkeypatch.setattr(bench_tp, "_resolve_head_sha", lambda: head_sha)
+    monkeypatch.setattr(bench_tp, "_resolve_base_sha", lambda: base_sha)
 
     with pytest.raises(SystemExit) as exc_info:
         bench_tp.main()
@@ -101,6 +115,7 @@ def test_main_fails_closed_for_independent_gate_failures(
     assert "name=tp" in lines[0]
     assert f"route={route}" in lines[0]
     assert f"head_sha={head_sha}" in lines[0]
+    assert f"base_sha={base_sha}" in lines[0]
 
 
 def test_run_bench_fails_closed_when_env_resolution_fails(monkeypatch, capsys):
