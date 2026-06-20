@@ -145,7 +145,7 @@ def _resolve_head_sha():
 
 
 def _resolve_base_sha():
-    """Return the PR target branch SHA, or ``unknown`` when unavailable."""
+    """Return the PR target branch SHA, or ``unknown`` if unavailable."""
     for name in ("ARK_BASE_SHA", "GITHUB_BASE_SHA", "BASE_SHA"):
         value = os.environ.get(name, "").strip()
         if _is_sha(value):
@@ -166,6 +166,9 @@ def _resolve_base_sha():
 
 def run_bench(world_size, timeout, hidden_size):
     """Return (ark_ms, route, failed) for one TP decode benchmark."""
+    if world_size < 1:
+        print(f"ERROR: invalid world_size={world_size}", file=sys.stderr)
+        return _SENTINEL_MS, "unknown", True
     try:
         env = _subprocess_env(world_size)
     except Exception as exc:  # noqa: BLE001 - fail closed with PERF_GATE.

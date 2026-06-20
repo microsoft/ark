@@ -4,6 +4,7 @@
 """No-GPU tests for the Qwen3 TP perf-gate CLI contract."""
 
 import os
+import subprocess
 import sys
 
 import pytest
@@ -116,6 +117,134 @@ def test_main_fails_closed_for_independent_gate_failures(
     assert f"route={route}" in lines[0]
     assert f"head_sha={head_sha}" in lines[0]
     assert f"base_sha={base_sha}" in lines[0]
+
+
+def test_resolve_base_sha_prefers_env_override(monkeypatch):
+    """A valid explicit base SHA wins over git fallback."""
+    monkeypatch.setenv("ARK_BASE_SHA", _VALID_BASE_SHA)
+
+    def fail_check_output(*args, **kwargs):
+        raise AssertionError("git fallback should not be called")
+
+    monkeypatch.setattr(bench_tp.subprocess, "check_output", fail_check_output)
+
+    assert bench_tp._resolve_base_sha() == _VALID_BASE_SHA
+
+
+def test_resolve_base_sha_uses_qwen_target_refs(monkeypatch):
+    """Base SHA falls back only to qwen3-allreduce-bench refs."""
+    calls = []
+
+    def fake_check_output(cmd, text, stderr):
+        calls.append(cmd)
+        if cmd[-1] == "qwen3-allreduce-bench":
+            return _VALID_BASE_SHA + "\n"
+        raise bench_tp.subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.delenv("ARK_BASE_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
+    monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.setattr(bench_tp, "_repo_root", lambda: "/repo")
+    monkeypatch.setattr(bench_tp.subprocess, "check_output", fake_check_output)
+
+    assert bench_tp._resolve_base_sha() == _VALID_BASE_SHA
+    assert calls == [
+        ["git", "-C", "/repo", "rev-parse", "origin/qwen3-allreduce-bench"],
+        ["git", "-C", "/repo", "rev-parse", "qwen3-allreduce-bench"],
+    ]
+
+
+def test_resolve_base_sha_returns_unknown_without_qwen_refs(monkeypatch):
+    """Missing qwen3-allreduce-bench refs do not fall back to main."""
+    calls = []
+
+    def fake_check_output(cmd, text, stderr):
+        calls.append(cmd)
+        raise bench_tp.subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.delenv("ARK_BASE_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
+    monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.setattr(bench_tp, "_repo_root", lambda: "/repo")
+    monkeypatch.setattr(bench_tp.subprocess, "check_output", fake_check_output)
+
+    assert bench_tp._resolve_base_sha() == "unknown"
+    assert calls == [
+        ["git", "-C", "/repo", "rev-parse", "origin/qwen3-allreduce-bench"],
+        ["git", "-C", "/repo", "rev-parse", "qwen3-allreduce-bench"],
+    ]
+
+
+def test_run_bench_rejects_invalid_world_size(monkeypatch, capsys):
+    """Invalid world sizes fail closed before worker env resolution."""
+
+    def fail_env(world_size):
+        raise AssertionError("worker env should not be resolved")
+
+    monkeypatch.setattr(bench_tp, "_subprocess_env", fail_env)
+
+    result = bench_tp.run_bench(
+        world_size=0,
+        timeout=1,
+        hidden_size=bench_tp.HIDDEN_SIZE,
+    )
+
+    assert result == (bench_tp._SENTINEL_MS, "unknown", True)
+    assert "ERROR: invalid world_size=0" in capsys.readouterr().err
+
+
+def test_main_fails_closed_for_invalid_world_size(monkeypatch, capsys):
+    """CLI world-size validation still prints one PERF_GATE line."""
+    monkeypatch.setattr(sys, "argv", ["bench_tp.py", "--world-size", "0"])
+    monkeypatch.setattr(bench_tp, "_resolve_head_sha", lambda: _VALID_SHA)
+    monkeypatch.setattr(
+        bench_tp, "_resolve_base_sha", lambda: _VALID_BASE_SHA
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        bench_tp.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    lines = _perf_gate_lines(captured.out)
+    assert len(lines) == 1
+    assert "ark_ms=999999.0000" in lines[0]
+    assert "route=unknown" in lines[0]
+    assert "ERROR: invalid world_size=0" in captured.err
+
+
+def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
+    tmp_path,
+):
+    """Shell wrapper preserves one PERF_GATE line on child startup failure."""
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
+    )
+    fake_python = tmp_path / "python3"
+    fake_python.write_text("#!/usr/bin/env sh\nexit 42\n", encoding="utf-8")
+    fake_python.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
+
+    result = subprocess.run(
+        ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
+        cwd=repo_root,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    lines = _perf_gate_lines(result.stdout)
+    assert lines == [
+        "PERF_GATE name=tp ark_ms=999999.0000 sglang_ms=0.3268 "
+        "ratio=3060223.3127 route=unknown head_sha=unknown "
+        "base_sha=unknown"
+    ]
 
 
 def test_run_bench_fails_closed_when_env_resolution_fails(monkeypatch, capsys):

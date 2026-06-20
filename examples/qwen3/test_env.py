@@ -134,37 +134,6 @@ def test_subprocess_env_finds_build_release_dir(monkeypatch, tmp_path):
     assert env["ARK_ROOT"] == str(release_python.parent)
 
 
-def test_subprocess_env_finds_root_level_build_dir(monkeypatch, tmp_path):
-    """Worker PYTHONPATH can use a sibling CI build/python dir."""
-    repo_root = tmp_path / "repo"
-    root_python = tmp_path / "ci" / "build" / "python"
-    source_python = repo_root / "python"
-    _fake_ark_package(root_python, compiled=True)
-    _fake_ark_package(source_python, compiled=False)
-
-    def fake_glob(pattern):
-        if pattern == os.path.join(os.sep, "*", "build", "python"):
-            return [str(root_python)]
-        return []
-
-    monkeypatch.setattr(qwen3_env, "_REPO_ROOT", str(repo_root))
-    monkeypatch.setattr(qwen3_env.glob, "glob", fake_glob)
-    monkeypatch.setattr(
-        qwen3_env.importlib.util, "find_spec", lambda name: None
-    )
-    monkeypatch.setattr(sys, "path", [str(source_python)])
-    monkeypatch.delenv("ARK_ROOT", raising=False)
-    monkeypatch.setenv("PYTHONPATH", str(source_python))
-
-    env = _subprocess_env(world_size=1)
-    paths = env["PYTHONPATH"].split(os.pathsep)
-
-    assert paths[0] == str(root_python)
-    assert paths.count(str(root_python)) == 1
-    assert paths.count(str(source_python)) == 1
-    assert env["ARK_ROOT"] == str(root_python.parent)
-
-
 def test_subprocess_env_skips_incompatible_wheel_dir(monkeypatch, tmp_path):
     """A stale build for another interpreter cannot shadow current core."""
     repo_root = tmp_path / "repo"

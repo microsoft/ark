@@ -15,7 +15,6 @@ run torch comparisons. No torch GPU work is issued while the ARK runtime is
 launched.
 """
 
-import os
 import subprocess
 import sys
 
@@ -41,6 +40,7 @@ def _gpu_count() -> int:
     if not torch.cuda.is_available():
         return 0
     return torch.cuda.device_count()
+
 
 
 _WORKER_SCRIPT = r'''

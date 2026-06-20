@@ -100,7 +100,7 @@ def _subprocess_env(world_size: int) -> dict:
       3. ``sys.path`` entries for any other compiled ``ark`` package.
       4. ``<repo>/build/python``, ``<repo>/build-release/python``,
          ``<repo>/build/*/python``, ``<repo>/build-release/*/python``,
-         root-level build dirs from the CI container, or ``<repo>/python``.
+         or ``<repo>/python``.
       5. inherited ``PYTHONPATH``.
 
     Also propagates the repo root for package imports in workers and sets
@@ -181,28 +181,6 @@ def _subprocess_env(world_size: int) -> dict:
             sorted(
                 glob.glob(
                     os.path.join(_REPO_ROOT, "build-release", "*", "python")
-                )
-            )
-        )
-        fallback_candidates.extend(
-            sorted(glob.glob(os.path.join(os.sep, "*", "build", "python")))
-        )
-        fallback_candidates.extend(
-            sorted(
-                glob.glob(os.path.join(os.sep, "*", "build-release", "python"))
-            )
-        )
-        fallback_candidates.extend(
-            sorted(
-                glob.glob(os.path.join(os.sep, "*", "build", "*", "python"))
-            )
-        )
-        fallback_candidates.extend(
-            sorted(
-                glob.glob(
-                    os.path.join(
-                        os.sep, "*", "build-release", "*", "python"
-                    )
                 )
             )
         )
