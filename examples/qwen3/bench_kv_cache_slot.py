@@ -3,8 +3,8 @@
 
 """Benchmark ARK fixed-layout KV-cache slot update/read.
 
-The SGLang target is the PROFILE.md attention budget: 20.93 ms over
-5 x 128 decode token-steps, i.e. 20.93 / 640 ms per token.
+This primitive has no stamped SGLang KV-slot-specific component target in
+PROFILE.md, so this script reports ARK latency only.
 """
 
 import argparse
@@ -20,17 +20,9 @@ try:
 except ImportError:
     ark = None
 
-_SGLANG_MS = 20.93 / 640.0
 
-
-def _perf_line(ark_ms):
-    ratio = ark_ms / _SGLANG_MS
-    print(
-        f"PERF_GATE name=kv_cache_slot"
-        f" ark_ms={ark_ms:.4f}"
-        f" sglang_ms={_SGLANG_MS:.4f}"
-        f" ratio={ratio:.4f}"
-    )
+def _bench_line(ark_ms, proof):
+    print(f"ARK_BENCH name=kv_cache_slot ark_ms={ark_ms:.4f} proof={proof}")
 
 
 def main():
@@ -44,11 +36,11 @@ def main():
     args = parser.parse_args()
 
     if torch is None or ark is None or not torch.cuda.is_available():
-        _perf_line(999999.0)
+        _bench_line(999999.0, "fail")
         raise SystemExit(1)
-    if args.iters > args.max_seq:
-        _perf_line(999999.0)
-        raise SystemExit("--iters must be <= --max-seq")
+    if args.iters < 1 or args.iters > args.max_seq:
+        _bench_line(999999.0, "fail")
+        raise SystemExit("--iters must satisfy 1 <= --iters <= --max-seq")
 
     try:
         ark.init()
@@ -74,21 +66,21 @@ def main():
 
         # Proof after stopping ARK: the graph ran and advanced in-cache state.
         position_cpu = int(position.cpu().item())
-        cache_cpu = cache[:2].cpu()
+        cache_cpu = cache[: args.iters].cpu()
         token_cpu = token.cpu()
         slot_cpu = slot.to_torch().cpu()
+        expected_cache = token_cpu.expand(args.iters, *slot_shape)
         proof_ok = (
             position_cpu == args.iters
-            and torch.equal(cache_cpu[0], token_cpu)
-            and torch.equal(cache_cpu[1], token_cpu)
+            and torch.equal(cache_cpu, expected_cache)
             and torch.equal(slot_cpu, token_cpu)
         )
         ark_ms = elapsed_s * 1000.0 / float(args.iters) if proof_ok else 999999.0
-        _perf_line(ark_ms)
+        _bench_line(ark_ms, "pass" if proof_ok else "fail")
         if not proof_ok:
             raise SystemExit(1)
     except Exception:
-        _perf_line(999999.0)
+        _bench_line(999999.0, "fail")
         raise
 
 

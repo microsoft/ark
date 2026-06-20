@@ -42,6 +42,7 @@ torch.cuda.set_device(0)
 
 if mode == "equiv":
     max_seq = 4
+    iters = 3
     slot_shape = (2, 3)
     cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16, device="cuda:0")
     token_cpu = torch.arange(1, 7, dtype=torch.float16).reshape(slot_shape)
@@ -53,7 +54,7 @@ if mode == "equiv":
 
     with ark.Runtime() as rt:
         rt.launch(device_id=0, loop_mode=True)
-        rt.run(iter=2)
+        rt.run(iter=iters)
         rt.stop()
 
     cache_cpu = cache.cpu()
@@ -61,18 +62,87 @@ if mode == "equiv":
     position_cpu = position.cpu()
 
     expected_cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16)
-    expected_cache[0] = token_cpu
-    expected_cache[1] = token_cpu
+    expected_cache[:iters] = token_cpu
     ok = (
         torch.equal(cache_cpu, expected_cache)
         and torch.equal(slot_cpu, token_cpu)
-        and int(position_cpu.item()) == 2
+        and int(position_cpu.item()) == iters
     )
     print(json.dumps({
         "mode": mode,
         "pass": ok,
         "position": int(position_cpu.item()),
-        "cache_sum": float(cache_cpu.sum().item()),
+    }))
+    sys.stdout.flush()
+    Executor.reset()
+    os._exit(0 if ok else 1)
+
+if mode == "last":
+    max_seq = 4
+    slot_shape = (2, 3)
+    cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16, device="cuda:0")
+    token_cpu = torch.arange(1, 7, dtype=torch.float16).reshape(slot_shape)
+    token = token_cpu.to(device="cuda:0")
+    position = torch.full((1,), max_seq - 1, dtype=torch.int32, device="cuda:0")
+    torch.cuda.synchronize(0)
+
+    slot = ark.kv_cache_slot(cache, token, position)
+
+    with ark.Runtime() as rt:
+        rt.launch(device_id=0, loop_mode=True)
+        rt.run(iter=1)
+        rt.stop()
+
+    cache_cpu = cache.cpu()
+    slot_cpu = slot.to_torch().cpu()
+    position_cpu = position.cpu()
+
+    expected_cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16)
+    expected_cache[max_seq - 1] = token_cpu
+    ok = (
+        torch.equal(cache_cpu, expected_cache)
+        and torch.equal(slot_cpu, token_cpu)
+        and int(position_cpu.item()) == max_seq
+    )
+    print(json.dumps({
+        "mode": mode,
+        "pass": ok,
+        "position": int(position_cpu.item()),
+    }))
+    sys.stdout.flush()
+    Executor.reset()
+    os._exit(0 if ok else 1)
+
+if mode == "graph_read":
+    max_seq = 4
+    slot_shape = (2, 3)
+    cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16, device="cuda:0")
+    token_cpu = torch.arange(1, 7, dtype=torch.float16).reshape(slot_shape)
+    token = token_cpu.to(device="cuda:0")
+    position = torch.zeros(1, dtype=torch.int32, device="cuda:0")
+    torch.cuda.synchronize(0)
+
+    cache_ark = ark.Tensor.from_torch(cache)
+    token_ark = ark.Tensor.from_torch(token)
+    position_ark = ark.Tensor.from_torch(position)
+    ark.kv_cache_slot(cache_ark, token_ark, position_ark)
+    later_cache_copy = ark.copy(cache_ark)
+
+    with ark.Runtime() as rt:
+        rt.launch(device_id=0, loop_mode=True)
+        rt.run(iter=1)
+        rt.stop()
+
+    copy_cpu = later_cache_copy.to_torch().cpu()
+    position_cpu = position.cpu()
+
+    expected = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16)
+    expected[0] = token_cpu
+    ok = torch.equal(copy_cpu, expected) and int(position_cpu.item()) == 1
+    print(json.dumps({
+        "mode": mode,
+        "pass": ok,
+        "position": int(position_cpu.item()),
     }))
     sys.stdout.flush()
     Executor.reset()
@@ -119,7 +189,15 @@ def _run_worker(mode: str, timeout: int = 120):
         cwd="/",
         env=_subprocess_env(1),
     )
-    out, err = proc.communicate(timeout=timeout)
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        out, err = proc.communicate()
+        pytest.fail(
+            f"worker {mode} timed out after {timeout}s\n"
+            f"stdout={_tail(out)}\nstderr={_tail(err)}"
+        )
     result = _load_worker_result(out)
     if proc.returncode != 0:
         err_lower = err.lower()
@@ -139,13 +217,30 @@ def _run_worker(mode: str, timeout: int = 120):
 
 
 @pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
-def test_kv_cache_slot_updates_two_positions_and_reads_slot():
-    """One launched runtime updates positions 0 and 1 and returns slot data."""
+def test_kv_cache_slot_updates_multiple_positions_and_reads_slot():
+    """One launched runtime updates positions 0, 1, and 2."""
     result = _run_worker("equiv")
 
     assert result["pass"] is True
-    assert result["position"] == 2
-    assert result["cache_sum"] == 42.0
+    assert result["position"] == 3
+
+
+@pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
+def test_kv_cache_slot_updates_last_valid_position():
+    """The last valid cache slot is writable and advances position."""
+    result = _run_worker("last")
+
+    assert result["pass"] is True
+    assert result["position"] == 4
+
+
+@pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
+def test_later_graph_op_reads_updated_external_cache():
+    """A later ARK op consumes the cache after the slot update."""
+    result = _run_worker("graph_read")
+
+    assert result["pass"] is True
+    assert result["position"] == 1
 
 
 @pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")

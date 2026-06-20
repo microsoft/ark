@@ -136,14 +136,23 @@ bool ModelGraph::Impl::verify() const {
         }
         node->op->verify();
         for (auto &tns : node->op->result_tensors()) {
-            if (tensor_to_producer_op_.find(tns) ==
-                tensor_to_producer_op_.end()) {
+            auto it = tensor_to_producer_op_.find(tns);
+            if (it == tensor_to_producer_op_.end()) {
                 LOG(DEBUG, "result tensor has not been produced by any op");
                 return false;
             }
-            if (tensor_to_producer_op_.at(tns) != node->op) {
-                LOG(DEBUG, "result tensor has been produced by another op");
-                return false;
+            if (it->second != node->op) {
+                bool overwritten = false;
+                for (auto &write_tns : it->second->write_tensors()) {
+                    if (write_tns == tns) {
+                        overwritten = true;
+                        break;
+                    }
+                }
+                if (!overwritten) {
+                    LOG(DEBUG, "result tensor has been produced by another op");
+                    return false;
+                }
             }
         }
         for (auto &tns : node->op->input_tensors()) {
@@ -213,8 +222,17 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
             ERR(InternalError, "Op has not been added to the graph");
         }
         auto producer = it2->second;
-        node->producers.push_back(producer);
-        producer->consumers.push_back(node);
+        if (producer != node) {
+            node->producers.push_back(producer);
+            producer->consumers.push_back(node);
+        }
+    }
+
+    // Input edges above already depend on the previous producer of each write
+    // tensor; now advance the producer map so later readers/writers observe
+    // this mutation.
+    for (auto &tns : op->write_tensors()) {
+        tensor_to_producer_op_[tns] = op;
     }
 
     node->context = context_stack_->dump();

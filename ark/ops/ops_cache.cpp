@@ -8,18 +8,11 @@
 namespace ark {
 namespace {
 
-bool is_zero_dims(const Dims &dims) {
-    for (auto dim : dims.vector()) {
-        if (dim != 0) return false;
-    }
-    return true;
-}
-
 void check_contiguous_fixed_layout(ModelTensorRef tensor,
                                    const std::string &name) {
     if (tensor->shape() != tensor->strides() ||
         tensor->shape() != tensor->padded_shape() ||
-        !is_zero_dims(tensor->offsets())) {
+        !tensor->offsets().is_zeros()) {
         ERR(ModelError,
             name,
             " must use a fixed contiguous layout with zero offsets");

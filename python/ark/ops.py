@@ -63,6 +63,33 @@ def _ensure_ark(t):
     return t
 
 
+_torch_tensor_cache_by_model = {}
+
+
+def _ensure_ark_cached(t, model):
+    """Return one ARK wrapper per raw torch tensor in *model*."""
+    if _no_torch or not isinstance(t, torch.Tensor):
+        return t
+    entry = _torch_tensor_cache_by_model.get(id(model))
+    if entry is None or entry[0] is not model:
+        entry = (model, {})
+        _torch_tensor_cache_by_model[id(model)] = entry
+    cache = entry[1]
+    key = (
+        t.data_ptr(),
+        tuple(t.shape),
+        tuple(t.stride()),
+        t.dtype,
+        t.device.type,
+        t.device.index,
+    )
+    ark_tensor = cache.get(key)
+    if ark_tensor is None:
+        ark_tensor = Tensor.from_torch(t)
+        cache[key] = ark_tensor
+    return ark_tensor
+
+
 def is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
 
@@ -148,14 +175,15 @@ def kv_cache_slot(
     name: str = "kv_cache_slot",
 ) -> Tensor:
     """Update ``cache[position]``, return the copied slot, and advance position."""
-    cache = _ensure_ark(cache)
+    model = Model.get_model()
+    cache = _ensure_ark_cached(cache, model)
     token = _ensure_ark(token)
-    position = _ensure_ark(position)
-    output = _ensure_ark(output)
+    position = _ensure_ark_cached(position, model)
+    output = _ensure_ark_cached(output, model)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().kv_cache_slot(
+        model.kv_cache_slot(
             cache._tensor, token._tensor, position._tensor, output, name
         )
     )
