@@ -95,7 +95,8 @@ def _subprocess_env(world_size: int) -> dict:
       2. ``importlib.util.find_spec("ark")`` — wherever the parent already
          resolved ark (handles build-tree, install, and namespace packages).
       3. ``sys.path`` entries for any other compiled ``ark`` package.
-      4. ``<repo>/build/python`` or ``<repo>/python``.
+      4. ``<repo>/build/python``, ``<repo>/build/*/python``, or
+         ``<repo>/python``.
       5. inherited ``PYTHONPATH``.
 
     Also propagates the repo root for package imports in workers and sets
@@ -159,9 +160,13 @@ def _subprocess_env(world_size: int) -> dict:
                 resolved_ark_root = _build_root_from_python_parent(entry)
             break
 
-    # --- Fallback: repo build/python or python ---
-    for subdir in ("build/python", "python"):
-        candidate = os.path.join(_REPO_ROOT, subdir)
+    # --- Fallback: repo build/python, scikit-build wheel dirs, or python ---
+    fallback_candidates = [os.path.join(_REPO_ROOT, "build", "python")]
+    fallback_candidates.extend(
+        sorted(glob.glob(os.path.join(_REPO_ROOT, "build", "*", "python")))
+    )
+    fallback_candidates.append(os.path.join(_REPO_ROOT, "python"))
+    for candidate in fallback_candidates:
         if _has_compiled_ark(candidate):
             _append_unique(extra, candidate)
             if compiled_ark_parent is None:
