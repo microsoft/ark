@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${ARK_ROOT:=$PWD}"
-export ARK_ROOT
-export PYTHONPATH="$ARK_ROOT/python:${PYTHONPATH:-}"
-
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo_root=""
 for candidate in "$script_dir" "$script_dir/.." "$PWD" "$PWD/.."; do
@@ -17,6 +13,20 @@ done
 if [ -z "$repo_root" ]; then
     echo 'PERF_GATE name=tp ark_ms=999999.0000 sglang_ms=0.3268 ratio=3060223.3127 route=unknown head_sha=unknown base_sha=unknown'
     exit 1
+fi
+
+if [ -z "${ARK_ROOT:-}" ]; then
+    if [ -f "$PWD/python/ark/__init__.py" ]; then
+        ARK_ROOT=$PWD
+    else
+        ARK_ROOT=$repo_root
+    fi
+fi
+export ARK_ROOT
+if [ -n "${PYTHONPATH:-}" ]; then
+    export PYTHONPATH="$ARK_ROOT/python:$PYTHONPATH"
+else
+    export PYTHONPATH="$ARK_ROOT/python"
 fi
 
 if [ -z "${ARK_HEAD_SHA:-}" ]; then

@@ -9,11 +9,14 @@ The parent reports max-rank latency and records the selected packet
 all-reduce route.
 
 The SGLang target is the PROFILE.md decode-dominated communication bucket:
-214.69 ms over 657 calls = 0.3268 ms per call. This benchmark reports the
-real ARK TP slice latency; the perf gate fails when the ratio exceeds 1.0.
+214.69 ms over 657 calls = 0.3268 ms per call. This is an intentionally
+conservative gate: it compares ARK matmul-plus-packet-all-reduce TP-slice
+latency against that SGLang budget, not an all-reduce-only metric. The perf
+gate fails when the ratio exceeds 1.0.
 """
 
 import argparse
+import math
 import os
 import re
 import subprocess
@@ -227,6 +230,19 @@ def run_bench(world_size, timeout, hidden_size):
                 print(
                     f"ERROR rank={rank}: no JSON result "
                     f"stdout_tail={_tail(out)} stderr_tail={_tail(err)}",
+                    file=sys.stderr,
+                )
+            elif not (
+                isinstance(result, dict)
+                and result.get("route") == _PACKET_ROUTE
+                and isinstance(result.get("latency_ms"), (int, float))
+                and not isinstance(result.get("latency_ms"), bool)
+                and math.isfinite(result.get("latency_ms"))
+            ):
+                failed = True
+                print(
+                    f"ERROR rank={rank}: invalid worker result schema: "
+                    f"{result!r}",
                     file=sys.stderr,
                 )
             else:

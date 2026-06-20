@@ -249,10 +249,12 @@ def test_perf_gate_wrapper_resolves_bench_relative_to_script(tmp_path):
         os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
     )
     argv_file = tmp_path / "argv.txt"
+    pythonpath_file = tmp_path / "pythonpath.txt"
     fake_python = tmp_path / "python3"
     fake_python.write_text(
         "#!/usr/bin/env sh\n"
-        "printf '%s\\n' \"$1\" > \"$ARGV_FILE\"\n"
+        'printf \'%s\\n\' "$1" > "$ARGV_FILE"\n'
+        'printf \'%s\\n\' "$PYTHONPATH" > "$PYTHONPATH_FILE"\n'
         "echo 'PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
         "ratio=0.3060 route=all_reduce_packet head_sha="
         f"{_VALID_SHA} base_sha={_VALID_BASE_SHA}'\n",
@@ -262,8 +264,11 @@ def test_perf_gate_wrapper_resolves_bench_relative_to_script(tmp_path):
     env = {
         **os.environ,
         "ARGV_FILE": str(argv_file),
+        "PYTHONPATH_FILE": str(pythonpath_file),
         "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
     }
+    env.pop("ARK_ROOT", None)
+    env.pop("PYTHONPATH", None)
 
     result = subprocess.run(
         ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
@@ -284,6 +289,54 @@ def test_perf_gate_wrapper_resolves_bench_relative_to_script(tmp_path):
     assert argv_file.read_text(encoding="utf-8").strip() == os.path.join(
         repo_root, "examples", "qwen3", "bench_tp.py"
     )
+    pythonpath = pythonpath_file.read_text(encoding="utf-8").strip()
+    assert pythonpath == os.path.join(repo_root, "python")
+    assert "" not in pythonpath.split(os.pathsep)
+
+
+def test_run_bench_returns_max_latency_for_successful_workers(monkeypatch):
+    """Successful worker JSON is aggregated with max-rank latency."""
+    launches = []
+
+    class FakeProcess:
+        def __init__(self, rank):
+            self.rank = rank
+            self.returncode = 0
+
+        def communicate(self, timeout):
+            latency = 0.01 if self.rank == 0 else 0.03
+            return (
+                (
+                    '{"route":"all_reduce_packet","latency_ms":'
+                    f"{latency}}}\n"
+                ).encode(),
+                b"",
+            )
+
+        def kill(self):
+            pass
+
+        def wait(self):
+            pass
+
+    def fake_popen(cmd, stdout, stderr, cwd, env):
+        launches.append((cmd, cwd, env))
+        return FakeProcess(rank=int(cmd[-3]))
+
+    monkeypatch.setattr(bench_tp, "_subprocess_env", lambda world_size: {})
+    monkeypatch.setattr(bench_tp.subprocess, "Popen", fake_popen)
+
+    result = bench_tp.run_bench(
+        world_size=2,
+        timeout=1,
+        hidden_size=bench_tp.HIDDEN_SIZE,
+    )
+
+    assert result == (0.03, "all_reduce_packet", False)
+    assert [launch[1] for launch in launches] == ["/", "/"]
+    assert [launch[0][-1] for launch in launches] == [
+        str(bench_tp.HIDDEN_SIZE)
+    ] * 2
 
 
 def test_run_bench_fails_closed_when_env_resolution_fails(monkeypatch, capsys):
@@ -340,3 +393,34 @@ def test_run_bench_marks_incomplete_worker_results_unknown(monkeypatch, capsys):
 
     assert result == (bench_tp._SENTINEL_MS, "unknown", True)
     assert "incomplete worker results" in capsys.readouterr().err
+
+
+def test_run_bench_rejects_worker_result_missing_latency(monkeypatch, capsys):
+    """Malformed worker JSON forces sentinel latency and unknown route."""
+
+    class FakeProcess:
+        returncode = 0
+
+        def communicate(self, timeout):
+            return b'{"route":"all_reduce_packet"}\n', b""
+
+        def kill(self):
+            pass
+
+        def wait(self):
+            pass
+
+    def fake_popen(cmd, stdout, stderr, cwd, env):
+        return FakeProcess()
+
+    monkeypatch.setattr(bench_tp, "_subprocess_env", lambda world_size: {})
+    monkeypatch.setattr(bench_tp.subprocess, "Popen", fake_popen)
+
+    result = bench_tp.run_bench(
+        world_size=1,
+        timeout=1,
+        hidden_size=bench_tp.HIDDEN_SIZE,
+    )
+
+    assert result == (bench_tp._SENTINEL_MS, "unknown", True)
+    assert "invalid worker result schema" in capsys.readouterr().err
