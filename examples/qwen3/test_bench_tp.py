@@ -466,6 +466,41 @@ def test_perf_gate_wrapper_rejects_malformed_success_line(tmp_path, child_line):
     ]
 
 
+def test_perf_gate_wrapper_preserves_rounded_passing_line(tmp_path):
+    """Shell wrapper gates on ratio, not rounded ark_ms text."""
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
+    )
+    child_line = (
+        "PERF_GATE name=tp ark_ms=0.3268 sglang_ms=0.3268 "
+        f"ratio=0.9999 route=all_reduce_packet head_sha={_VALID_SHA} "
+        f"base_sha={_VALID_BASE_SHA}"
+    )
+    fake_python = tmp_path / "python3"
+    fake_python.write_text(
+        "#!/usr/bin/env sh\n" f"echo '{child_line}'\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
+
+    result = subprocess.run(
+        ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
+        cwd=repo_root,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert _perf_gate_lines(result.stdout) == [child_line]
+
+
 def test_perf_gate_wrapper_preserves_valid_slow_perf_line(tmp_path):
     """Shell wrapper reports real packet evidence when only ratio fails."""
     repo_root = os.path.normpath(

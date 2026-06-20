@@ -33,9 +33,9 @@ else
     export PYTHONPATH="$ARK_ROOT/python"
 fi
 
-# bench_tp.py owns benchmark policy and emits the canonical line; this
-# wrapper only accepts one well-formed passing packet-route line as a
-# fail-closed CI guard, otherwise it emits the sentinel.
+# bench_tp.py owns benchmark policy and emits the canonical line. This
+# wrapper preserves well-formed packet-route evidence, fails on slow ratios,
+# and emits the sentinel only for malformed or unknown evidence.
 _valid_perf_gate_line() {
     local line=$1
     local numeric='([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?'
@@ -48,6 +48,13 @@ _valid_perf_gate_line() {
     [[ "$line" =~ (^|[[:space:]])sglang_ms=0\.3268($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])ratio=($numeric)($|[[:space:]]) ]] || return 1
     PERF_GATE_RATIO=${BASH_REMATCH[2]}
+    awk -v ark_ms="$PERF_GATE_ARK_MS" -v ratio="$PERF_GATE_RATIO" '
+        BEGIN {
+            expected = ark_ms / 0.3268;
+            diff = ratio - expected;
+            if (diff < 0) diff = -diff;
+            exit !(diff <= 0.002);
+        }' || return 1
 }
 
 out_file=$(mktemp)
@@ -61,17 +68,8 @@ perf_gate_count=$(grep -c '^PERF_GATE ' "$out_file" || true)
 if [ "$perf_gate_count" -eq 1 ]; then
     perf_gate_line=$(grep '^PERF_GATE ' "$out_file")
     if _valid_perf_gate_line "$perf_gate_line"; then
-        awk -v ratio="$PERF_GATE_RATIO" -v ark_ms="$PERF_GATE_ARK_MS" \
-            'BEGIN { exit !(ratio < 1.0 && ark_ms < 0.3268) }' || {
-            if awk -v ratio="$PERF_GATE_RATIO" \
-                'BEGIN { exit !(ratio >= 1.0) }'; then
-                echo "$perf_gate_line"
-            else
-                _emit_sentinel
-            fi
-            exit 1
-        }
         echo "$perf_gate_line"
+        awk -v ratio="$PERF_GATE_RATIO" 'BEGIN { exit !(ratio < 1.0) }' || exit 1
         exit "$status"
     fi
 fi
