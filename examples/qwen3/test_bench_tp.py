@@ -129,6 +129,65 @@ def test_resolve_base_sha_prefers_env_override(monkeypatch):
     assert bench_tp._resolve_base_sha() == _VALID_BASE_SHA
 
 
+def test_resolve_head_sha_prefers_pull_request_event(monkeypatch, tmp_path):
+    """Head SHA uses the PR head event before the merge SHA."""
+    event_path = tmp_path / "event.json"
+    event_path.write_text(
+        '{"pull_request":{"head":{"sha":"'
+        + _VALID_SHA
+        + '"}}}',
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ARK_HEAD_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_HEAD_SHA", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
+    monkeypatch.setenv("GITHUB_SHA", _VALID_BASE_SHA)
+
+    assert bench_tp._resolve_head_sha() == _VALID_SHA
+
+
+def test_resolve_base_sha_uses_pull_request_event(monkeypatch, tmp_path):
+    """Base SHA can be recovered from the GitHub PR event payload."""
+    event_path = tmp_path / "event.json"
+    event_path.write_text(
+        '{"pull_request":{"base":{"sha":"'
+        + _VALID_BASE_SHA
+        + '"}}}',
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ARK_BASE_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
+    monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
+
+    def fail_check_output(*args, **kwargs):
+        raise AssertionError("git fallback should not be called")
+
+    monkeypatch.setattr(bench_tp.subprocess, "check_output", fail_check_output)
+
+    assert bench_tp._resolve_base_sha() == _VALID_BASE_SHA
+
+
+def test_resolve_base_sha_ignores_malformed_event(monkeypatch, tmp_path):
+    """Malformed GitHub event payloads fall back to git refs."""
+    event_path = tmp_path / "event.json"
+    event_path.write_text("{", encoding="utf-8")
+
+    def fake_check_output(cmd, text, stderr):
+        if cmd[-1] == "origin/qwen3-allreduce-bench":
+            return _VALID_BASE_SHA + "\n"
+        raise bench_tp.subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.delenv("ARK_BASE_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
+    monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
+    monkeypatch.setattr(bench_tp, "_repo_root", lambda: "/repo")
+    monkeypatch.setattr(bench_tp.subprocess, "check_output", fake_check_output)
+
+    assert bench_tp._resolve_base_sha() == _VALID_BASE_SHA
+
+
 def test_resolve_base_sha_uses_qwen_target_refs(monkeypatch):
     """Base SHA falls back only to qwen3-allreduce-bench refs."""
     calls = []
@@ -142,6 +201,7 @@ def test_resolve_base_sha_uses_qwen_target_refs(monkeypatch):
     monkeypatch.delenv("ARK_BASE_SHA", raising=False)
     monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
     monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
     monkeypatch.setattr(bench_tp, "_repo_root", lambda: "/repo")
     monkeypatch.setattr(bench_tp.subprocess, "check_output", fake_check_output)
 
@@ -163,6 +223,7 @@ def test_resolve_base_sha_returns_unknown_without_qwen_refs(monkeypatch):
     monkeypatch.delenv("ARK_BASE_SHA", raising=False)
     monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
     monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
     monkeypatch.setattr(bench_tp, "_repo_root", lambda: "/repo")
     monkeypatch.setattr(bench_tp.subprocess, "check_output", fake_check_output)
 
@@ -321,6 +382,41 @@ def test_perf_gate_wrapper_rejects_malformed_success_line(tmp_path, child_line):
         "ratio=3060223.3127 route=unknown head_sha=unknown "
         "base_sha=unknown"
     ]
+
+
+def test_perf_gate_wrapper_preserves_valid_slow_perf_line(tmp_path):
+    """Shell wrapper reports real packet evidence when only ratio fails."""
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
+    )
+    child_line = (
+        "PERF_GATE name=tp ark_ms=0.4000 sglang_ms=0.3268 "
+        f"ratio=1.2239 route=all_reduce_packet head_sha={_VALID_SHA} "
+        f"base_sha={_VALID_BASE_SHA}"
+    )
+    fake_python = tmp_path / "python3"
+    fake_python.write_text(
+        "#!/usr/bin/env sh\n" f"echo '{child_line}'\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
+
+    result = subprocess.run(
+        ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
+        cwd=repo_root,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert _perf_gate_lines(result.stdout) == [child_line]
 
 
 def test_perf_gate_wrapper_resolves_bench_relative_to_script(tmp_path):

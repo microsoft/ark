@@ -141,10 +141,37 @@ def _repo_root():
     )
 
 
+def _github_event_sha(*keys):
+    """Return a SHA from ``GITHUB_EVENT_PATH`` at *keys*, if available."""
+    event_path = os.environ.get("GITHUB_EVENT_PATH", "").strip()
+    if not event_path:
+        return "unknown"
+    try:
+        import json
+
+        with open(event_path, "r", encoding="utf-8") as event_file:
+            value = json.load(event_file)
+    except (OSError, ValueError, TypeError):
+        return "unknown"
+    for key in keys:
+        if not isinstance(value, dict):
+            return "unknown"
+        value = value.get(key)
+    if isinstance(value, str) and _is_sha(value.strip()):
+        return value.strip()
+    return "unknown"
+
+
 def _resolve_head_sha():
     """Return the current source SHA, or ``unknown`` when unavailable."""
+    for name in ("ARK_HEAD_SHA", "GITHUB_HEAD_SHA"):
+        value = os.environ.get(name, "").strip()
+        if _is_sha(value):
+            return value
+    value = _github_event_sha("pull_request", "head", "sha")
+    if _is_sha(value):
+        return value
     for name in (
-        "ARK_HEAD_SHA",
         "GITHUB_SHA",
         "CI_COMMIT_SHA",
         "BUILD_SOURCEVERSION",
@@ -172,6 +199,9 @@ def _resolve_base_sha():
         value = os.environ.get(name, "").strip()
         if _is_sha(value):
             return value
+    value = _github_event_sha("pull_request", "base", "sha")
+    if _is_sha(value):
+        return value
     for ref in (f"origin/{_BASE_BRANCH}", _BASE_BRANCH):
         try:
             value = subprocess.check_output(

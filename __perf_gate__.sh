@@ -56,8 +56,7 @@ _valid_perf_gate_line() {
     [[ "$line" =~ (^|[[:space:]])ark_ms=$numeric($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])sglang_ms=0\.3268($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])ratio=($numeric)($|[[:space:]]) ]] || return 1
-    local ratio=${BASH_REMATCH[2]}
-    awk -v ratio="$ratio" 'BEGIN { exit !(ratio < 1.0) }' || return 1
+    PERF_GATE_RATIO=${BASH_REMATCH[2]}
 }
 
 out_file=$(mktemp)
@@ -72,6 +71,7 @@ if [ "$perf_gate_count" -eq 1 ]; then
     perf_gate_line=$(grep '^PERF_GATE ' "$out_file")
     if _valid_perf_gate_line "$perf_gate_line"; then
         echo "$perf_gate_line"
+        awk -v ratio="$PERF_GATE_RATIO" 'BEGIN { exit !(ratio < 1.0) }' || exit 1
         exit "$status"
     fi
 fi
