@@ -229,9 +229,25 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     }
 
     // Input edges above already depend on the previous producer of each write
-    // tensor; now advance the producer map so later readers/writers observe
-    // this mutation.
+    // tensor. Also order this writer after existing readers of that producer
+    // before advancing the producer map so writes cannot race prior reads.
     for (auto &tns : op->write_tensors()) {
+        auto it = tensor_to_producer_op_.find(tns);
+        if (it == tensor_to_producer_op_.end()) {
+            ERR(InternalError, "Tensor has not been produced by any op. ",
+                tns->serialize().dump(), " ", tns.get());
+        }
+        auto it2 = op_to_node_.find(it->second);
+        if (it2 == op_to_node_.end()) {
+            ERR(InternalError, "Op has not been added to the graph");
+        }
+        auto previous_producer = it2->second;
+        for (auto &consumer : previous_producer->consumers) {
+            if (consumer != node && consumer != previous_producer) {
+                node->producers.push_back(consumer);
+                consumer->consumers.push_back(node);
+            }
+        }
         tensor_to_producer_op_[tns] = op;
     }
 

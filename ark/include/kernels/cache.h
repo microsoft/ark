@@ -30,8 +30,8 @@ DEVICE void kv_cache_slot(DataType *out, DataType *cache, const DataType *token,
     // config cannot advance the shared position once per task.
     if (uop_idx != 0) return;
 
-    const int pos = position[0];
     SlotUnitOp::sync_threads();
+    const int pos = position[0];
     if (pos < 0 || pos >= MaxSeq) {
         if (SlotUnitOp::thread_id() == 0) {
             position[0] = INT32_MIN;
@@ -60,6 +60,7 @@ DEVICE void kv_cache_slot(DataType *out, DataType *cache, const DataType *token,
     if (SlotUnitOp::thread_id() == 0) {
         position[0] = pos + 1;
     }
+    SlotUnitOp::sync_threads();
 }
 
 }  // namespace ark

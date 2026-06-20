@@ -8,6 +8,7 @@ import json
 import pytest
 
 import ark
+import ark.ops as ark_ops
 
 try:
     import torch
@@ -67,6 +68,24 @@ def test_kv_cache_slot_rejects_non_int32_position():
     torch is None or not torch.cuda.is_available(),
     reason="CUDA torch is required",
 )
+def test_raw_torch_cache_is_cleared_on_model_reset():
+    """Model.reset releases cached raw torch wrapper state."""
+    ark.init()
+    assert not ark_ops._torch_tensor_cache_by_model
+    model = ark.Model.get_model()
+    cache = torch.zeros((4, 2, 3), dtype=torch.float16, device="cuda:0")
+
+    ark.copy(cache, name="populate_cache")
+
+    assert ark_ops._torch_tensor_cache_by_model[id(model)][0] is model
+    ark.Model.reset()
+    assert not ark_ops._torch_tensor_cache_by_model
+
+
+@pytest.mark.skipif(
+    torch is None or not torch.cuda.is_available(),
+    reason="CUDA torch is required",
+)
 def test_kv_cache_slot_raw_torch_state_is_ordered():
     """Repeated raw torch cache/position inputs reuse graph state identity."""
     ark.init()
@@ -85,3 +104,27 @@ def test_kv_cache_slot_raw_torch_state_is_ordered():
         node for node in graph["Nodes"] if node["Op"]["Name"] == "slot1"
     )
     assert slot0_node["Id"] in slot1_node["ProducerNodeIds"]
+
+
+@pytest.mark.skipif(
+    torch is None or not torch.cuda.is_available(),
+    reason="CUDA torch is required",
+)
+def test_kv_cache_slot_raw_torch_then_copy_is_ordered():
+    """Raw torch wrappers are shared between kv_cache_slot and copy."""
+    ark.init()
+    cache = torch.zeros((4, 2, 3), dtype=torch.float16, device="cuda:0")
+    token = torch.ones((2, 3), dtype=torch.float16, device="cuda:0")
+    position = torch.zeros(1, dtype=torch.int32, device="cuda:0")
+
+    ark.kv_cache_slot(cache, token, position, name="slot")
+    ark.copy(cache, name="read_cache")
+
+    graph = json.loads(ark.Model.get_model().compress().serialize(False))
+    slot_node = next(
+        node for node in graph["Nodes"] if node["Op"]["Name"] == "slot"
+    )
+    read_node = next(
+        node for node in graph["Nodes"] if node["Op"]["Name"] == "read_cache"
+    )
+    assert slot_node["Id"] in read_node["ProducerNodeIds"]

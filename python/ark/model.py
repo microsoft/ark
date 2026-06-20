@@ -70,6 +70,9 @@ class Model(CoreModel):
         """
         Reset the model state.
         """
+        from .ops import _clear_torch_tensor_cache
+
+        _clear_torch_tensor_cache()
         ModelState.model = None
         ModelState.rank = 0
         ModelState.world_size = 1

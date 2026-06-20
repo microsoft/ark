@@ -149,6 +149,50 @@ if mode == "graph_read":
     Executor.reset()
     os._exit(0 if ok else 1)
 
+if mode == "two_slots":
+    max_seq = 4
+    slot_shape = (2, 3)
+    cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16, device="cuda:0")
+    token0_cpu = torch.arange(1, 7, dtype=torch.float16).reshape(slot_shape)
+    token1_cpu = token0_cpu + 10
+    token0 = token0_cpu.to(device="cuda:0")
+    token1 = token1_cpu.to(device="cuda:0")
+    position = torch.zeros(1, dtype=torch.int32, device="cuda:0")
+    torch.cuda.synchronize(0)
+
+    slot0 = ark.kv_cache_slot(cache, token0, position)
+    slot1 = ark.kv_cache_slot(cache, token1, position)
+    read0 = ark.copy(slot0)
+    read1 = ark.copy(slot1)
+
+    with ark.Runtime() as rt:
+        rt.launch(device_id=0, loop_mode=True)
+        rt.run(iter=1)
+        rt.stop()
+
+    cache_cpu = cache.cpu()
+    read0_cpu = read0.to_torch().cpu()
+    read1_cpu = read1.to_torch().cpu()
+    position_cpu = position.cpu()
+
+    expected_cache = torch.zeros((max_seq,) + slot_shape, dtype=torch.float16)
+    expected_cache[0] = token0_cpu
+    expected_cache[1] = token1_cpu
+    ok = (
+        torch.equal(cache_cpu, expected_cache)
+        and torch.equal(read0_cpu, token0_cpu)
+        and torch.equal(read1_cpu, token1_cpu)
+        and int(position_cpu.item()) == 2
+    )
+    print(json.dumps({
+        "mode": mode,
+        "pass": ok,
+        "position": int(position_cpu.item()),
+    }))
+    sys.stdout.flush()
+    Executor.reset()
+    os._exit(0 if ok else 1)
+
 if mode == "oob":
     cache = torch.zeros((2, 2, 3), dtype=torch.float16, device="cuda:0")
     token = torch.ones((2, 3), dtype=torch.float16, device="cuda:0")
@@ -242,6 +286,15 @@ def test_later_graph_op_reads_updated_external_cache():
 
     assert result["pass"] is True
     assert result["position"] == 3
+
+
+@pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
+def test_two_kv_cache_slots_share_position_in_one_graph_launch():
+    """Later graph ops read two runtime-selected cache slots."""
+    result = _run_worker("two_slots")
+
+    assert result["pass"] is True
+    assert result["position"] == 2
 
 
 @pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")

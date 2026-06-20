@@ -50,26 +50,27 @@ __all__ = [
 ]
 
 
-def _ensure_ark(t):
+_torch_tensor_cache_by_model = {}
+
+
+def _clear_torch_tensor_cache():
+    _torch_tensor_cache_by_model.clear()
+
+
+def _ensure_ark(t, model=None):
     """
     If *t* is a ``torch.Tensor``, convert it to an ARK ``Tensor`` via
     ``Tensor.from_torch()``. Otherwise return *t* unchanged.
 
     When used on an ``output`` parameter, the returned ARK tensor shares memory
-    with the original torch tensor via ``Tensor.from_torch``.
+    with the original torch tensor via ``Tensor.from_torch``. Repeated raw torch
+    tensors in the same model reuse one ARK wrapper so mutable state keeps graph
+    identity across Python ops.
     """
-    if not _no_torch and isinstance(t, torch.Tensor):
-        return Tensor.from_torch(t)
-    return t
-
-
-_torch_tensor_cache_by_model = {}
-
-
-def _ensure_ark_cached(t, model):
-    """Return one ARK wrapper per raw torch tensor in *model*."""
     if _no_torch or not isinstance(t, torch.Tensor):
         return t
+    if model is None:
+        model = Model.get_model()
     entry = _torch_tensor_cache_by_model.get(id(model))
     if entry is None or entry[0] is not model:
         entry = (model, {})
@@ -174,12 +175,17 @@ def kv_cache_slot(
     output: Tensor = NullTensor,
     name: str = "kv_cache_slot",
 ) -> Tensor:
-    """Update ``cache[position]``, return the copied slot, and advance position."""
+    """Update ``cache[position]``, return the copied slot, and advance position.
+
+    Graph ordering for cache/position mutation follows ARK tensor identity:
+    reuse the same ``Tensor`` handle for all ops touching that mutable state.
+    Repeated raw torch tensors are canonicalized within the current model.
+    """
     model = Model.get_model()
-    cache = _ensure_ark_cached(cache, model)
-    token = _ensure_ark(token)
-    position = _ensure_ark_cached(position, model)
-    output = _ensure_ark_cached(output, model)
+    cache = _ensure_ark(cache, model)
+    token = _ensure_ark(token, model)
+    position = _ensure_ark(position, model)
+    output = _ensure_ark(output, model)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(

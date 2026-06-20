@@ -197,6 +197,8 @@ class Model : public ModelGraph {
                 const std::string &name = "");
     // Write `token` into `cache[position]`, copy that slot to `output`, and
     // advance the external INT32 position by one. Fixed contiguous layout only.
+    // Graph ordering for cache/position mutation follows ARK Tensor identity;
+    // reuse the same Tensor handle for all ops touching that mutable state.
     Tensor kv_cache_slot(Tensor cache, Tensor token, Tensor position,
                          Tensor output = NullTensor,
                          const std::string &name = "");
