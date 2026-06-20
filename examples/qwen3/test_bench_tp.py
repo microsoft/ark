@@ -174,9 +174,7 @@ def test_resolve_base_sha_returns_unknown_without_qwen_refs(monkeypatch):
 
 
 @pytest.mark.parametrize("world_size", [0, 1])
-def test_run_bench_rejects_invalid_world_size(
-    monkeypatch, capsys, world_size
-):
+def test_run_bench_rejects_invalid_world_size(monkeypatch, capsys, world_size):
     """Invalid world sizes fail closed before worker env resolution."""
 
     def fail_env(world_size):
@@ -280,23 +278,25 @@ def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
             f"base_sha={_VALID_BASE_SHA}"
         ),
         (
+            "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=1.0000 "
+            f"ratio=0.1000 route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
             "PERF_GATE name=tp ark_ms=2.0000 sglang_ms=1.0000 "
             f"ratio=2.0000 route=all_reduce_packet head_sha={_VALID_SHA} "
             f"base_sha={_VALID_BASE_SHA}"
         ),
     ],
 )
-def test_perf_gate_wrapper_rejects_malformed_success_line(
-    tmp_path, child_line
-):
+def test_perf_gate_wrapper_rejects_malformed_success_line(tmp_path, child_line):
     """Shell wrapper rejects each invalid child PERF_GATE field."""
     repo_root = os.path.normpath(
         os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
     )
     fake_python = tmp_path / "python3"
     fake_python.write_text(
-        "#!/usr/bin/env sh\n"
-        f"echo '{child_line}'\n",
+        "#!/usr/bin/env sh\n" f"echo '{child_line}'\n",
         encoding="utf-8",
     )
     fake_python.chmod(0o755)
