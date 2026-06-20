@@ -15,6 +15,7 @@ run torch comparisons. No torch GPU work is issued while the ARK runtime is
 launched.
 """
 
+import os
 import subprocess
 import sys
 
