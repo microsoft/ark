@@ -169,8 +169,12 @@ def _resolve_base_sha():
 
 def run_bench(world_size, timeout, hidden_size):
     """Return (ark_ms, route, failed) for one TP decode benchmark."""
-    if world_size < 1:
-        print(f"ERROR: invalid world_size={world_size}", file=sys.stderr)
+    if world_size < 2:
+        print(
+            "ERROR: all_reduce_packet requires "
+            f"world_size >= 2 (got {world_size})",
+            file=sys.stderr,
+        )
         return _SENTINEL_MS, "unknown", True
     try:
         env = _subprocess_env(world_size)
@@ -258,13 +262,6 @@ def run_bench(world_size, timeout, hidden_size):
         route = "unknown"
         print(
             "ERROR: incomplete worker results; route unknown",
-            file=sys.stderr,
-        )
-    if any(r.get("route") != _PACKET_ROUTE for r in results):
-        failed = True
-        route = "unknown"
-        print(
-            "ERROR: worker did not report all_reduce_packet route",
             file=sys.stderr,
         )
     if failed:

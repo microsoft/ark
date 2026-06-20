@@ -43,6 +43,8 @@ def _gpu_count() -> int:
     return torch.cuda.device_count()
 
 
+# This intentionally mirrors bench_tp.py's ARK graph/lifecycle while adding
+# only post-rt.stop() CPU reference checks so the benchmark stays latency-only.
 _WORKER_SCRIPT = r'''
 """Worker: run one ARK row-parallel TP decode slice."""
 import json

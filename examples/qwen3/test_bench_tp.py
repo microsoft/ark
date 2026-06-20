@@ -173,7 +173,10 @@ def test_resolve_base_sha_returns_unknown_without_qwen_refs(monkeypatch):
     ]
 
 
-def test_run_bench_rejects_invalid_world_size(monkeypatch, capsys):
+@pytest.mark.parametrize("world_size", [0, 1])
+def test_run_bench_rejects_invalid_world_size(
+    monkeypatch, capsys, world_size
+):
     """Invalid world sizes fail closed before worker env resolution."""
 
     def fail_env(world_size):
@@ -182,13 +185,16 @@ def test_run_bench_rejects_invalid_world_size(monkeypatch, capsys):
     monkeypatch.setattr(bench_tp, "_subprocess_env", fail_env)
 
     result = bench_tp.run_bench(
-        world_size=0,
+        world_size=world_size,
         timeout=1,
         hidden_size=bench_tp.HIDDEN_SIZE,
     )
 
     assert result == (bench_tp._SENTINEL_MS, "unknown", True)
-    assert "ERROR: invalid world_size=0" in capsys.readouterr().err
+    assert (
+        "ERROR: all_reduce_packet requires "
+        f"world_size >= 2 (got {world_size})"
+    ) in capsys.readouterr().err
 
 
 def test_main_fails_closed_for_invalid_world_size(monkeypatch, capsys):
@@ -206,7 +212,10 @@ def test_main_fails_closed_for_invalid_world_size(monkeypatch, capsys):
     assert len(lines) == 1
     assert "ark_ms=999999.0000" in lines[0]
     assert "route=unknown" in lines[0]
-    assert "ERROR: invalid world_size=0" in captured.err
+    assert (
+        "ERROR: all_reduce_packet requires world_size >= 2 (got 0)"
+        in captured.err
+    )
 
 
 def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
@@ -237,6 +246,77 @@ def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
     assert result.returncode == 1
     lines = _perf_gate_lines(result.stdout)
     assert lines == [
+        "PERF_GATE name=tp ark_ms=999999.0000 sglang_ms=0.3268 "
+        "ratio=3060223.3127 route=unknown head_sha=unknown "
+        "base_sha=unknown"
+    ]
+
+
+@pytest.mark.parametrize(
+    "child_line",
+    [
+        (
+            "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+            f"ratio=0.3060 route=unknown head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+            f"ratio=0.3060 route=all_reduce_packet head_sha=unknown "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+            f"ratio=0.3060 route=all_reduce_packet head_sha={_VALID_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp sglang_ms=0.3268 ratio=0.3060 "
+            f"route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+            f"ratio=fast route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=2.0000 sglang_ms=1.0000 "
+            f"ratio=2.0000 route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+    ],
+)
+def test_perf_gate_wrapper_rejects_malformed_success_line(
+    tmp_path, child_line
+):
+    """Shell wrapper rejects each invalid child PERF_GATE field."""
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
+    )
+    fake_python = tmp_path / "python3"
+    fake_python.write_text(
+        "#!/usr/bin/env sh\n"
+        f"echo '{child_line}'\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
+
+    result = subprocess.run(
+        ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
+        cwd=repo_root,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert _perf_gate_lines(result.stdout) == [
         "PERF_GATE name=tp ark_ms=999999.0000 sglang_ms=0.3268 "
         "ratio=3060223.3127 route=unknown head_sha=unknown "
         "base_sha=unknown"
@@ -348,7 +428,7 @@ def test_run_bench_fails_closed_when_env_resolution_fails(monkeypatch, capsys):
     monkeypatch.setattr(bench_tp, "_subprocess_env", fail_env)
 
     ark_ms, route, failed = bench_tp.run_bench(
-        world_size=1,
+        world_size=2,
         timeout=1,
         hidden_size=bench_tp.HIDDEN_SIZE,
     )
@@ -417,7 +497,7 @@ def test_run_bench_rejects_worker_result_missing_latency(monkeypatch, capsys):
     monkeypatch.setattr(bench_tp.subprocess, "Popen", fake_popen)
 
     result = bench_tp.run_bench(
-        world_size=1,
+        world_size=2,
         timeout=1,
         hidden_size=bench_tp.HIDDEN_SIZE,
     )
