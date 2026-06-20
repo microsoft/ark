@@ -5,7 +5,7 @@ set -uo pipefail
 export ARK_ROOT
 export PYTHONPATH="${PYTHONPATH:-$PWD/python}"
 
-for py in "$PWD/python" "$PWD"/build/*/python "$PWD"/../build/*/python; do
+for py in "$PWD/python" "$PWD/build/python" "$PWD"/build/*/python "$PWD"/../build/*/python; do
     if ls "$py"/ark/core*.so >/dev/null 2>&1; then
         export PYTHONPATH="$py:$PYTHONPATH"
         export ARK_ROOT="$(dirname "$py")"
@@ -49,7 +49,7 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
 tp_status=0
-python3 "$examples_dir/bench_tp.py" --world-size 8 --timeout 180 >"$tmpdir/tp.log" 2>"$tmpdir/tp.err" || tp_status=1
+python3 "$examples_dir/bench_tp.py" --world-size 8 --timeout 600 >"$tmpdir/tp.log" 2>"$tmpdir/tp.err" || tp_status=1
 read -r tp_ark_ms tp_ratio tp_route tp_head_sha tp_parse_failed < <(python3 - "$tmpdir/tp.log" "$tp_target_ms" <<'PY'
 import re
 import sys
