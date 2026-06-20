@@ -128,49 +128,55 @@ def _tail(data, limit=500):
 
 def _run_tp_test(world_size: int, timeout: int = 180):
     """Spawn *world_size* workers and assert TP slice correctness."""
-    procs = []
-    for rank in range(world_size):
-        procs.append(
-            subprocess.Popen(
-                [
-                    sys.executable,
-                    "-c",
-                    _WORKER_SCRIPT,
-                    str(rank),
-                    str(world_size),
-                    str(HIDDEN_SIZE),
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd="/",
-                env=_subprocess_env(world_size),
-            )
-        )
-
+    env = _subprocess_env(world_size)
     errors = []
     results = []
+    procs = []
     try:
-        for rank, proc in enumerate(procs):
+        for rank in range(world_size):
             try:
-                out, err = proc.communicate(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-                errors.append(f"rank {rank}: timed out after {timeout}s")
-                continue
-            result = _load_worker_result(out)
-            if proc.returncode != 0:
-                errors.append(
-                    f"rank {rank}: exit={proc.returncode} "
-                    f"stderr={_tail(err, 300)}"
+                procs.append(
+                    subprocess.Popen(
+                        [
+                            sys.executable,
+                            "-c",
+                            _WORKER_SCRIPT,
+                            str(rank),
+                            str(world_size),
+                            str(HIDDEN_SIZE),
+                        ],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd="/",
+                        env=env,
+                    )
                 )
-            if result is None:
-                errors.append(
-                    f"rank {rank}: stdout contained no JSON result "
-                    f"stdout_tail={_tail(out)} stderr_tail={_tail(err)}"
-                )
-            else:
-                results.append(result)
+            except OSError as exc:
+                errors.append(f"rank {rank}: launch failed: {exc}")
+                break
+
+        if not errors:
+            for rank, proc in enumerate(procs):
+                try:
+                    out, err = proc.communicate(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                    errors.append(f"rank {rank}: timed out after {timeout}s")
+                    continue
+                result = _load_worker_result(out)
+                if proc.returncode != 0:
+                    errors.append(
+                        f"rank {rank}: exit={proc.returncode} "
+                        f"stderr={_tail(err, 300)}"
+                    )
+                if result is None:
+                    errors.append(
+                        f"rank {rank}: stdout contained no JSON result "
+                        f"stdout_tail={_tail(out)} stderr_tail={_tail(err)}"
+                    )
+                else:
+                    results.append(result)
     finally:
         for proc in procs:
             proc.kill()

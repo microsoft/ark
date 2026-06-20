@@ -5,13 +5,12 @@
 
 Each rank computes a local ``[1, 4096 / TP] x [4096 / TP, 4096]`` matmul
 and reduces the partial ``[1, 4096]`` output with ``ark.all_reduce_packet``.
-The parent reports max-rank latency and requires every worker to report the
-packet route.
+The parent reports max-rank latency and records the selected packet
+all-reduce route.
 
 The SGLang target is the PROFILE.md decode-dominated communication bucket:
-214.69 ms over 657 calls = 0.3268 ms per call. This benchmark times the real
-ARK TP slice, so the reported ratio is allowed to fail if matmul plus packet
-all-reduce is slower than that target.
+214.69 ms over 657 calls = 0.3268 ms per call. This benchmark reports the
+real ARK TP slice latency; the perf gate fails when the ratio exceeds 1.0.
 """
 
 import argparse
@@ -178,7 +177,10 @@ def run_bench(world_size, timeout, hidden_size):
         failed = True
     if any(r.get("route") != "all_reduce_packet" for r in results):
         failed = True
-        print("ERROR: missing all_reduce_packet route proof", file=sys.stderr)
+        print(
+            "ERROR: worker did not report all_reduce_packet route",
+            file=sys.stderr,
+        )
     if failed:
         return _SENTINEL_MS, True
     return max(r["latency_ms"] for r in results), False
