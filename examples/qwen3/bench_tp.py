@@ -180,7 +180,7 @@ def run_bench(world_size, timeout, hidden_size):
                     f"ERROR rank={rank}: timed out after {timeout}s",
                     file=sys.stderr,
                 )
-                continue
+                break
             result = _load_worker_result(out)
             if proc.returncode != 0:
                 failed = True
@@ -206,6 +206,11 @@ def run_bench(world_size, timeout, hidden_size):
     route = results[0].get("route", "unknown") if results else "unknown"
     if len(results) != world_size:
         failed = True
+        route = "unknown"
+        print(
+            "ERROR: incomplete worker results; route unknown",
+            file=sys.stderr,
+        )
     if any(r.get("route") != _PACKET_ROUTE for r in results):
         failed = True
         route = "unknown"

@@ -3,8 +3,8 @@
 
 """Shared subprocess environment helpers for Qwen3 examples.
 
-Used by both ``bench_allreduce.py`` and ``test_allreduce.py`` to build
-a consistent PYTHONPATH / CUDA_VISIBLE_DEVICES env for worker processes.
+Used by Qwen3 benchmark/test subprocesses to build a consistent
+PYTHONPATH / CUDA_VISIBLE_DEVICES env for worker processes.
 Workers are launched from ``cwd="/"``, so a simple relative path prepend is
 not enough. Prefer the checkout/build under ``ARK_ROOT`` while also supporting
 an already-imported or build-tree ``ark`` package, and synthesize
@@ -18,6 +18,7 @@ workers cannot rely on the parent process's current directory, and source-only
 """
 
 import glob
+import importlib.machinery
 import importlib.util
 import json
 import os
@@ -39,10 +40,12 @@ def _has_compiled_ark(parent_dir: str) -> bool:
     ark_pkg = os.path.join(parent_dir, "ark")
     if not os.path.isfile(os.path.join(ark_pkg, "__init__.py")):
         return False
-    # Check for compiled extension (Linux .so, Windows .pyd)
-    return bool(
-        glob.glob(os.path.join(ark_pkg, "core*.so"))
-        or glob.glob(os.path.join(ark_pkg, "core*.pyd"))
+    suffixes = list(importlib.machinery.EXTENSION_SUFFIXES)
+    if ".pyd" not in suffixes:
+        suffixes.append(".pyd")
+    return any(
+        os.path.isfile(os.path.join(ark_pkg, f"core{suffix}"))
+        for suffix in suffixes
     )
 
 
@@ -177,7 +180,8 @@ def _subprocess_env(world_size: int) -> dict:
     if compiled_ark_parent is None:
         raise RuntimeError(
             "no compiled ark package found for worker PYTHONPATH; "
-            "expected ark/core*.so under $ARK_ROOT/python or a build path"
+            "expected an importable ark/core extension under "
+            "$ARK_ROOT/python or a build path"
         )
 
     # --- Propagate repo root for examples.qwen3 package imports ---
