@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "ark/model.hpp"
-
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "unittest/unittest_utils.h"
@@ -67,8 +66,8 @@ ark::unittest::State test_kv_cache_slot_invalid() {
     }
     {
         ark::Model m;
-        ark::Tensor cache = m.placeholder({4, 2, 3}, ark::FP16, {5, 2, 3}, {},
-                                          {4, 2, 3});
+        ark::Tensor cache =
+            m.placeholder({4, 2, 3}, ark::FP16, {5, 2, 3}, {}, {4, 2, 3});
         ark::Tensor token = m.tensor({2, 3}, ark::FP16);
         ark::Tensor position = m.placeholder({1}, ark::INT32);
         UNITTEST_THROW(m.kv_cache_slot(cache, token, position),

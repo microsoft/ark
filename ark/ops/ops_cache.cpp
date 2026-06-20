@@ -13,8 +13,7 @@ void check_contiguous_fixed_layout(ModelTensorRef tensor,
     if (tensor->shape() != tensor->strides() ||
         tensor->shape() != tensor->padded_shape() ||
         !tensor->offsets().is_zeros()) {
-        ERR(ModelError,
-            name,
+        ERR(ModelError, name,
             " must use a fixed contiguous layout with zero offsets");
     }
 }
@@ -114,8 +113,9 @@ Json ModelOpKvCacheSlot::default_config(
 
 Tensor Model::kv_cache_slot(Tensor cache, Tensor token, Tensor position,
                             Tensor output, const std::string &name) {
-    return impl_->create_op<ModelOpKvCacheSlot>(name, cache.ref_, token.ref_,
-                                                position.ref_, output.ref_)
+    return impl_
+        ->create_op<ModelOpKvCacheSlot>(name, cache.ref_, token.ref_,
+                                        position.ref_, output.ref_)
         ->result_tensors()[0];
 }
 

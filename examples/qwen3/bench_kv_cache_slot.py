@@ -49,9 +49,15 @@ def main():
         cache = torch.zeros(
             (args.max_seq,) + slot_shape, dtype=torch.bfloat16, device="cuda:0"
         )
-        token = torch.arange(
-            args.kv_heads * args.head_dim, dtype=torch.float32, device="cuda:0"
-        ).reshape(slot_shape).to(torch.bfloat16)
+        token = (
+            torch.arange(
+                args.kv_heads * args.head_dim,
+                dtype=torch.float32,
+                device="cuda:0",
+            )
+            .reshape(slot_shape)
+            .to(torch.bfloat16)
+        )
         position = torch.zeros(1, dtype=torch.int32, device="cuda:0")
         torch.cuda.synchronize(0)
 
@@ -75,7 +81,9 @@ def main():
             and torch.equal(cache_cpu, expected_cache)
             and torch.equal(slot_cpu, token_cpu)
         )
-        ark_ms = elapsed_s * 1000.0 / float(args.iters) if proof_ok else 999999.0
+        ark_ms = (
+            elapsed_s * 1000.0 / float(args.iters) if proof_ok else 999999.0
+        )
         _bench_line(ark_ms, "pass" if proof_ok else "fail")
         if not proof_ok:
             raise SystemExit(1)

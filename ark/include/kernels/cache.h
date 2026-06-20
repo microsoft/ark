@@ -23,8 +23,8 @@ template <int MaxSeq, typename SlotDims, typename SlotShape,
 DEVICE void kv_cache_slot(DataType *out, DataType *cache, const DataType *token,
                           int32_t *position, int uop_idx,
                           [[maybe_unused]] int smem_per_warp) {
-    using SlotUnitOp = ark::UnitOp<SlotDims, SlotShape, UnitSlotDims,
-                                   NumWarps, SmemBytes>;
+    using SlotUnitOp =
+        ark::UnitOp<SlotDims, SlotShape, UnitSlotDims, NumWarps, SmemBytes>;
 
     // The model config fixes NumTasks=1. Keep a guard here so a future manual
     // config cannot advance the shared position once per task.
