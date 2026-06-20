@@ -10,6 +10,7 @@
 #include <mscclpp/port_channel_device.hpp>
 
 #include "arithmetic.h"
+#include "cache.h"
 #include "cast.h"
 #include "comm.h"
 #include "copy.h"

@@ -9,6 +9,7 @@
 #include "logging.hpp"
 #include "model_tensor.hpp"
 #include "ops/ops_arithmetic.hpp"
+#include "ops/ops_cache.hpp"
 #include "ops/ops_cast.hpp"
 #include "ops/ops_communication.hpp"
 #include "ops/ops_copy.hpp"
@@ -61,6 +62,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Embedding);
         MODEL_OP_TYPE_REGISTER(Exp);
         MODEL_OP_TYPE_REGISTER(Gelu);
+        MODEL_OP_TYPE_REGISTER(KvCacheSlot);
         MODEL_OP_TYPE_REGISTER(LayerNorm);
         MODEL_OP_TYPE_REGISTER(Matmul);
         MODEL_OP_TYPE_REGISTER(MatmulGelu);

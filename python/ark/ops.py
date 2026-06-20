@@ -40,6 +40,7 @@ __all__ = [
     "embedding",
     "cast",
     "copy",
+    "kv_cache_slot",
     "constant",
     "ones",
     "zeros",
@@ -137,6 +138,27 @@ def copy(
     if isinstance(input, Tensor):
         input = input._tensor
     return Tensor(Model.get_model().copy(input, output, name))
+
+
+def kv_cache_slot(
+    cache: Tensor,
+    token: Tensor,
+    position: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "kv_cache_slot",
+) -> Tensor:
+    """Update ``cache[position]``, return the copied slot, and advance position."""
+    cache = _ensure_ark(cache)
+    token = _ensure_ark(token)
+    position = _ensure_ark(position)
+    output = _ensure_ark(output)
+    if output is not NullTensor:
+        output = output._tensor
+    return Tensor(
+        Model.get_model().kv_cache_slot(
+            cache._tensor, token._tensor, position._tensor, output, name
+        )
+    )
 
 
 def div(

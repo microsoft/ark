@@ -195,6 +195,11 @@ class Model : public ModelGraph {
                 const std::string &name = "");
     Tensor copy(float val, Tensor output = NullTensor,
                 const std::string &name = "");
+    // Write `token` into `cache[position]`, copy that slot to `output`, and
+    // advance the external INT32 position by one. Fixed contiguous layout only.
+    Tensor kv_cache_slot(Tensor cache, Tensor token, Tensor position,
+                         Tensor output = NullTensor,
+                         const std::string &name = "");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.

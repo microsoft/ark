@@ -42,6 +42,9 @@ void register_model(py::module &m) {
              py::overload_cast<float, ark::Tensor, const std::string &>(
                  &ark::Model::copy),
              py::arg("input"), py::arg("output"), py::arg("name"))
+        .def("kv_cache_slot", &ark::Model::kv_cache_slot,
+             py::arg("cache"), py::arg("token"), py::arg("position"),
+             py::arg("output"), py::arg("name"))
         .def("div",
              py::overload_cast<ark::Tensor, ark::Tensor, ark::Tensor,
                                const std::string &>(&ark::Model::div),
