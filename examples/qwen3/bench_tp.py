@@ -108,7 +108,13 @@ def _tail(data, limit=500):
 
 def _resolve_head_sha():
     """Return the current source SHA, or ``unknown`` when unavailable."""
-    for name in ("ARK_HEAD_SHA", "GITHUB_SHA", "CI_COMMIT_SHA"):
+    for name in (
+        "ARK_HEAD_SHA",
+        "GITHUB_SHA",
+        "CI_COMMIT_SHA",
+        "BUILD_SOURCEVERSION",
+        "GIT_COMMIT",
+    ):
         value = os.environ.get(name, "").strip()
         if re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
             return value
@@ -241,7 +247,7 @@ def main():
         f" route={route}"
         f" head_sha={head_sha}"
     )
-    if failed:
+    if failed or ratio >= 1.0:
         raise SystemExit(1)
 
 
