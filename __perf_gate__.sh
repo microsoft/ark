@@ -3,7 +3,15 @@ set -uo pipefail
 
 : "${ARK_ROOT:=$PWD}"
 export ARK_ROOT
-export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
+export PYTHONPATH="${PYTHONPATH:-$PWD/python}"
+
+for py in "$PWD/python" "$PWD"/build/*/python "$PWD"/../build/*/python; do
+    if ls "$py"/ark/core*.so >/dev/null 2>&1; then
+        export PYTHONPATH="$py:$PYTHONPATH"
+        export ARK_ROOT="$(dirname "$py")"
+        break
+    fi
+done
 
 if [ -f ../examples/qwen3/bench_allreduce.py ]; then
     examples_dir=../examples/qwen3
@@ -43,11 +51,11 @@ PY
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
-status=0
-python3 "$examples_dir/bench_allreduce.py" --world-size 2 --shape decode >"$tmpdir/allreduce-tp2.log" 2>"$tmpdir/allreduce-tp2.err" || status=1
-python3 "$examples_dir/bench_allreduce.py" --world-size 8 --shape decode >"$tmpdir/allreduce-tp8.log" 2>"$tmpdir/allreduce-tp8.err" || status=1
+allreduce_status=0
+python3 "$examples_dir/bench_allreduce.py" --world-size 2 --shape decode >"$tmpdir/allreduce-tp2.log" 2>"$tmpdir/allreduce-tp2.err" || allreduce_status=1
+python3 "$examples_dir/bench_allreduce.py" --world-size 8 --shape decode >"$tmpdir/allreduce-tp8.log" 2>"$tmpdir/allreduce-tp8.err" || allreduce_status=1
 
-allreduce_ark_ms=$(python3 - "$tmpdir/allreduce-tp2.log" "$tmpdir/allreduce-tp8.log" "$status" <<'PY'
+allreduce_ark_ms=$(python3 - "$tmpdir/allreduce-tp2.log" "$tmpdir/allreduce-tp8.log" "$allreduce_status" <<'PY'
 import re
 import sys
 
@@ -63,28 +71,28 @@ else:
     print(f"{max(values):.4f}")
 PY
 )
-allreduce_ratio=$(python3 - "$allreduce_ark_ms" "$allreduce_target_ms" <<'PY'
-import sys
 
-print(f"{float(sys.argv[1]) / float(sys.argv[2]):.4f}")
-PY
-)
-printf 'PERF_GATE name=allreduce ark_ms=%s sglang_ms=%s ratio=%s\n' "$allreduce_ark_ms" "$allreduce_target_ms" "$allreduce_ratio"
-if ! python3 - "$allreduce_ark_ms" "$allreduce_target_ms" "$status" <<'PY'
+if ! python3 - "$allreduce_ark_ms" "$allreduce_target_ms" <<'PY'
 import sys
 
 ark_ms = float(sys.argv[1])
 target_ms = float(sys.argv[2])
-status = int(sys.argv[3])
-if status or ark_ms >= target_ms:
+if ark_ms >= target_ms:
     raise SystemExit(1)
 PY
 then
+    tp_ratio=$(python3 - "$tp_target_ms" <<'PY'
+import sys
+
+print(f"{999999.0 / float(sys.argv[1]):.4f}")
+PY
+)
+    printf 'PERF_GATE name=tp ark_ms=999999.0000 sglang_ms=%s ratio=%s\n' "$tp_target_ms" "$tp_ratio"
     exit 1
 fi
 
 tp_status=0
-python3 "$examples_dir/bench_tp.py" --world-size 8 >"$tmpdir/tp.log" 2>"$tmpdir/tp.err" || tp_status=1
+python3 "$examples_dir/bench_tp.py" --world-size 8 --timeout 180 >"$tmpdir/tp.log" 2>"$tmpdir/tp.err" || tp_status=1
 read -r tp_ark_ms tp_ratio tp_parse_failed < <(python3 - "$tmpdir/tp.log" "$tp_target_ms" <<'PY'
 import re
 import sys
