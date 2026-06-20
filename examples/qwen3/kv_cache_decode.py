@@ -47,6 +47,10 @@ class KVCacheDecodeConfig:
     def group_size(self) -> int:
         return self.num_q_heads // self.num_kv_heads
 
+    @property
+    def ark_q_rows(self) -> int:
+        return max(self.group_size, 64)
+
 
 QWEN3_DECODE_CONFIG = KVCacheDecodeConfig(
     max_seq_len=640,
@@ -57,8 +61,8 @@ QWEN3_DECODE_CONFIG = KVCacheDecodeConfig(
 
 
 _SMALL_TEST_CONFIG = KVCacheDecodeConfig(
-    max_seq_len=8,
-    num_q_heads=4,
+    max_seq_len=64,
+    num_q_heads=8,
     num_kv_heads=2,
     head_dim=64,
 )
@@ -217,7 +221,7 @@ class KVCacheDecodeGraph:
 
         for kv_head in range(cfg.num_kv_heads):
             q_group = ark.placeholder(
-                [cfg.group_size, cfg.head_dim], dtype, name=f"q_group_{kv_head}"
+                [cfg.ark_q_rows, cfg.head_dim], dtype, name=f"q_group_{kv_head}"
             )
             k_token = ark.placeholder(
                 [1, cfg.head_dim], dtype, name=f"k_token_{kv_head}"
@@ -274,7 +278,9 @@ class KVCacheDecodeGraph:
             probs = ark.softmax(scores, name=f"softmax_{kv_head}")
             context = ark.matmul(probs, v_after, name=f"context_{kv_head}")
             ark.copy(
-                context, output=output_group, name=f"write_output_{kv_head}"
+                context[: cfg.group_size, :],
+                output=output_group,
+                name=f"write_output_{kv_head}",
             )
 
             self.q_group.append(q_group)
@@ -308,7 +314,11 @@ class KVCacheDecodeGraph:
         for kv_head in range(cfg.num_kv_heads):
             q0 = kv_head * cfg.group_size
             q1 = q0 + cfg.group_size
-            bindings[self.q_group[kv_head]] = q[q0:q1, :]
+            q_group = torch.zeros(
+                cfg.ark_q_rows, cfg.head_dim, dtype=cfg.dtype, device=q.device
+            )
+            q_group[: cfg.group_size, :] = q[q0:q1, :]
+            bindings[self.q_group[kv_head]] = q_group
             bindings[self.k_token[kv_head]] = k[kv_head : kv_head + 1, :]
             bindings[self.v_token[kv_head]] = v[kv_head : kv_head + 1, :]
             bindings[self.k_slot[kv_head]] = k_cache[
