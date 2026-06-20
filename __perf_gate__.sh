@@ -12,7 +12,11 @@ for py in \
     "$PWD"/build/*/python \
     "$PWD"/build-release/*/python \
     "$PWD"/../build/*/python \
-    "$PWD"/../build-release/*/python; do
+    "$PWD"/../build-release/*/python \
+    /*/build/python \
+    /*/build-release/python \
+    /*/build/*/python \
+    /*/build-release/*/python; do
     if ls "$py"/ark/core*.so >/dev/null 2>&1; then
         export PYTHONPATH="$py:$PYTHONPATH"
         export ARK_ROOT="$(dirname "$py")"
