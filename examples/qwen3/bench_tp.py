@@ -12,7 +12,7 @@ The SGLang target is the PROFILE.md decode-dominated communication bucket:
 214.69 ms over 657 calls = 0.3268 ms per call. This is an intentionally
 conservative gate: it compares ARK matmul-plus-packet-all-reduce TP-slice
 latency against that SGLang budget, not an all-reduce-only metric. The perf
-gate fails when the ratio exceeds 1.0.
+gate fails when the ratio is greater than or equal to 1.0.
 """
 
 import argparse
@@ -36,6 +36,9 @@ _PACKET_ROUTE = "all_reduce_packet"
 _PACKET_ROUTE_PROOF = "AllReducePacketFused"
 _BASE_BRANCH = "qwen3-allreduce-bench"
 
+# Latency-only perf-gate worker. test_tp.py intentionally mirrors this
+# graph with post-runtime CPU reference checks instead of sharing code that
+# could contaminate benchmark timing.
 _WORKER_SCRIPT = r'''
 """Worker: time one ARK row-parallel TP decode slice."""
 import json
@@ -164,14 +167,12 @@ def _github_event_sha(*keys):
 
 def _resolve_head_sha():
     """Return the current source SHA, or ``unknown`` when unavailable."""
-    for name in ("ARK_HEAD_SHA", "GITHUB_HEAD_SHA"):
-        value = os.environ.get(name, "").strip()
-        if _is_sha(value):
-            return value
     value = _github_event_sha("pull_request", "head", "sha")
     if _is_sha(value):
         return value
     for name in (
+        "ARK_HEAD_SHA",
+        "GITHUB_HEAD_SHA",
         "GITHUB_SHA",
         "CI_COMMIT_SHA",
         "BUILD_SOURCEVERSION",
@@ -195,13 +196,13 @@ def _resolve_head_sha():
 
 def _resolve_base_sha():
     """Return the PR target branch SHA, or ``unknown`` if unavailable."""
+    value = _github_event_sha("pull_request", "base", "sha")
+    if _is_sha(value):
+        return value
     for name in ("ARK_BASE_SHA", "GITHUB_BASE_SHA", "BASE_SHA"):
         value = os.environ.get(name, "").strip()
         if _is_sha(value):
             return value
-    value = _github_event_sha("pull_request", "base", "sha")
-    if _is_sha(value):
-        return value
     for ref in (f"origin/{_BASE_BRANCH}", _BASE_BRANCH):
         try:
             value = subprocess.check_output(
@@ -292,6 +293,7 @@ def run_bench(world_size, timeout, hidden_size):
                 and isinstance(result.get("latency_ms"), (int, float))
                 and not isinstance(result.get("latency_ms"), bool)
                 and math.isfinite(result.get("latency_ms"))
+                and result.get("latency_ms") >= 0.0
             ):
                 failed = True
                 print(

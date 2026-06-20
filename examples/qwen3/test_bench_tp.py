@@ -138,8 +138,12 @@ def test_resolve_head_sha_prefers_pull_request_event(monkeypatch, tmp_path):
         + '"}}}',
         encoding="utf-8",
     )
-    monkeypatch.delenv("ARK_HEAD_SHA", raising=False)
-    monkeypatch.delenv("GITHUB_HEAD_SHA", raising=False)
+    monkeypatch.setenv(
+        "ARK_HEAD_SHA", "1111111111111111111111111111111111111111"
+    )
+    monkeypatch.setenv(
+        "GITHUB_HEAD_SHA", "2222222222222222222222222222222222222222"
+    )
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
     monkeypatch.setenv("GITHUB_SHA", _VALID_BASE_SHA)
 
@@ -155,9 +159,13 @@ def test_resolve_base_sha_uses_pull_request_event(monkeypatch, tmp_path):
         + '"}}}',
         encoding="utf-8",
     )
-    monkeypatch.delenv("ARK_BASE_SHA", raising=False)
-    monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
-    monkeypatch.delenv("BASE_SHA", raising=False)
+    monkeypatch.setenv(
+        "ARK_BASE_SHA", "1111111111111111111111111111111111111111"
+    )
+    monkeypatch.setenv(
+        "GITHUB_BASE_SHA", "2222222222222222222222222222222222222222"
+    )
+    monkeypatch.setenv("BASE_SHA", "3333333333333333333333333333333333333333")
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
 
     def fail_check_output(*args, **kwargs):
@@ -311,6 +319,65 @@ def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
     ]
 
 
+def test_perf_gate_wrapper_does_not_inject_git_shas(tmp_path):
+    """Shell wrapper leaves SHA precedence to bench_tp.py."""
+    repo_root = os.path.normpath(
+        os.path.join(os.path.dirname(bench_tp.__file__), "..", "..")
+    )
+    git_head_sha = "1111111111111111111111111111111111111111"
+    git_base_sha = "2222222222222222222222222222222222222222"
+    fake_git = tmp_path / "git"
+    fake_git.write_text(
+        "#!/usr/bin/env sh\n"
+        "case \"$*\" in\n"
+        f"  *'rev-parse HEAD') echo '{git_head_sha}' ; exit 0 ;;\n"
+        "  *'rev-parse origin/qwen3-allreduce-bench') "
+        f"echo '{git_base_sha}' ; exit 0 ;;\n"
+        "esac\n"
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    fake_git.chmod(0o755)
+    fake_python = tmp_path / "python3"
+    fake_python.write_text(
+        "#!/usr/bin/env sh\n"
+        "if [ -n \"${ARK_HEAD_SHA:-}\" ] || "
+        "[ -n \"${ARK_BASE_SHA:-}\" ]; then\n"
+        "  exit 43\n"
+        "fi\n"
+        "echo \"PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+        "ratio=0.3060 route=all_reduce_packet "
+        "head_sha=$GITHUB_HEAD_SHA base_sha=$GITHUB_BASE_SHA\"\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    env = {
+        **os.environ,
+        "GITHUB_HEAD_SHA": _VALID_SHA,
+        "GITHUB_BASE_SHA": _VALID_BASE_SHA,
+        "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
+    env.pop("ARK_HEAD_SHA", None)
+    env.pop("ARK_BASE_SHA", None)
+
+    result = subprocess.run(
+        ["bash", os.path.join(repo_root, "__perf_gate__.sh")],
+        cwd=repo_root,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert _perf_gate_lines(result.stdout) == [
+        "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+        f"ratio=0.3060 route=all_reduce_packet head_sha={_VALID_SHA} "
+        f"base_sha={_VALID_BASE_SHA}"
+    ]
+
+
 @pytest.mark.parametrize(
     "child_line",
     [
@@ -336,6 +403,21 @@ def test_perf_gate_wrapper_emits_sentinel_when_child_prints_no_gate(
         (
             "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
             f"ratio=fast route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=-1.0000 sglang_ms=0.3268 "
+            f"ratio=-3.0600 route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=0.1000 sglang_ms=0.3268 "
+            f"ratio=-0.3060 route=all_reduce_packet head_sha={_VALID_SHA} "
+            f"base_sha={_VALID_BASE_SHA}"
+        ),
+        (
+            "PERF_GATE name=tp ark_ms=0.4000 sglang_ms=0.3268 "
+            f"ratio=0.3060 route=all_reduce_packet head_sha={_VALID_SHA} "
             f"base_sha={_VALID_BASE_SHA}"
         ),
         (
@@ -619,6 +701,42 @@ def test_run_bench_rejects_worker_result_missing_latency(monkeypatch, capsys):
 
         def communicate(self, timeout):
             return b'{"route":"all_reduce_packet"}\n', b""
+
+        def kill(self):
+            pass
+
+        def wait(self):
+            pass
+
+    def fake_popen(cmd, stdout, stderr, cwd, env):
+        return FakeProcess()
+
+    monkeypatch.setattr(bench_tp, "_subprocess_env", lambda world_size: {})
+    monkeypatch.setattr(bench_tp.subprocess, "Popen", fake_popen)
+
+    result = bench_tp.run_bench(
+        world_size=2,
+        timeout=1,
+        hidden_size=bench_tp.HIDDEN_SIZE,
+    )
+
+    assert result == (bench_tp._SENTINEL_MS, "unknown", True)
+    assert "invalid worker result schema" in capsys.readouterr().err
+
+
+def test_run_bench_rejects_worker_result_negative_latency(monkeypatch, capsys):
+    """Impossible negative latency forces sentinel latency."""
+
+    class FakeProcess:
+        returncode = 0
+
+        def communicate(self, timeout):
+            return (
+                b'{"route":"all_reduce_packet",'
+                b'"route_proof":"AllReducePacketFused",'
+                b'"latency_ms":-0.01}\n',
+                b"",
+            )
 
         def kill(self):
             pass

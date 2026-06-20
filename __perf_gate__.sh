@@ -33,27 +33,18 @@ else
     export PYTHONPATH="$ARK_ROOT/python"
 fi
 
-if [ -z "${ARK_HEAD_SHA:-}" ]; then
-    head_sha=$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || true)
-    if [[ "$head_sha" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
-        export ARK_HEAD_SHA="$head_sha"
-    fi
-fi
-if [ -z "${ARK_BASE_SHA:-}" ]; then
-    base_sha=$(git -C "$repo_root" rev-parse origin/qwen3-allreduce-bench 2>/dev/null || true)
-    if [[ "$base_sha" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
-        export ARK_BASE_SHA="$base_sha"
-    fi
-fi
-
+# bench_tp.py owns benchmark policy and emits the canonical line; this
+# wrapper only accepts one well-formed passing packet-route line as a
+# fail-closed CI guard, otherwise it emits the sentinel.
 _valid_perf_gate_line() {
     local line=$1
-    local numeric='[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?'
+    local numeric='([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?'
     [[ "$line" =~ (^|[[:space:]])name=tp($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])route=all_reduce_packet($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])head_sha=[0-9a-fA-F]{7,40}($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])base_sha=[0-9a-fA-F]{7,40}($|[[:space:]]) ]] || return 1
-    [[ "$line" =~ (^|[[:space:]])ark_ms=$numeric($|[[:space:]]) ]] || return 1
+    [[ "$line" =~ (^|[[:space:]])ark_ms=($numeric)($|[[:space:]]) ]] || return 1
+    PERF_GATE_ARK_MS=${BASH_REMATCH[2]}
     [[ "$line" =~ (^|[[:space:]])sglang_ms=0\.3268($|[[:space:]]) ]] || return 1
     [[ "$line" =~ (^|[[:space:]])ratio=($numeric)($|[[:space:]]) ]] || return 1
     PERF_GATE_RATIO=${BASH_REMATCH[2]}
@@ -70,8 +61,17 @@ perf_gate_count=$(grep -c '^PERF_GATE ' "$out_file" || true)
 if [ "$perf_gate_count" -eq 1 ]; then
     perf_gate_line=$(grep '^PERF_GATE ' "$out_file")
     if _valid_perf_gate_line "$perf_gate_line"; then
+        awk -v ratio="$PERF_GATE_RATIO" -v ark_ms="$PERF_GATE_ARK_MS" \
+            'BEGIN { exit !(ratio < 1.0 && ark_ms < 0.3268) }' || {
+            if awk -v ratio="$PERF_GATE_RATIO" \
+                'BEGIN { exit !(ratio >= 1.0) }'; then
+                echo "$perf_gate_line"
+            else
+                _emit_sentinel
+            fi
+            exit 1
+        }
         echo "$perf_gate_line"
-        awk -v ratio="$PERF_GATE_RATIO" 'BEGIN { exit !(ratio < 1.0) }' || exit 1
         exit "$status"
     fi
 fi
