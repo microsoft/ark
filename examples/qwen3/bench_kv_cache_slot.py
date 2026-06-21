@@ -47,9 +47,7 @@ def main():
 
     try:
         available = (
-            torch is not None
-            and ark is not None
-            and torch.cuda.is_available()
+            torch is not None and ark is not None and torch.cuda.is_available()
         )
     except Exception:
         available = False
@@ -100,9 +98,7 @@ def main():
             and torch.equal(slot_cpu, token_cpu)
         )
         ark_ms = (
-            elapsed_s * 1000.0 / float(args.iters)
-            if proof_ok
-            else _SENTINEL_MS
+            elapsed_s * 1000.0 / float(args.iters) if proof_ok else _SENTINEL_MS
         )
         _perf_gate_line(ark_ms)
         if not proof_ok:
