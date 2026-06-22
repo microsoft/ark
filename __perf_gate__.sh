@@ -29,21 +29,33 @@ if [ -z "${ARK_ROOT:-}" ]; then
 fi
 export ARK_ROOT
 
-pythonpath_prepend=""
-if has_compiled_ark "$ARK_ROOT/python"; then
-    pythonpath_prepend="$ARK_ROOT/python"
-elif has_compiled_ark "$ARK_ROOT/build/python"; then
-    pythonpath_prepend="$ARK_ROOT/build/python"
-elif has_compiled_ark "$source_root/build/python"; then
-    pythonpath_prepend="$source_root/build/python"
+pythonpath_entries=()
+for candidate in \
+    "$ARK_ROOT/python" \
+    "$ARK_ROOT/build/python" \
+    "$source_root/build/python"; do
+    if has_compiled_ark "$candidate"; then
+        pythonpath_entries+=("$candidate")
+        break
+    fi
+done
+
+if [ -n "${PYTHONPATH:-}" ]; then
+    IFS=':' read -r -a inherited_pythonpath <<<"$PYTHONPATH"
+    for entry in "${inherited_pythonpath[@]}"; do
+        [ -n "$entry" ] || continue
+        if [ "$entry" = "$ARK_ROOT/python" ] && \
+            ! has_compiled_ark "$entry"; then
+            continue
+        fi
+        pythonpath_entries+=("$entry")
+    done
 fi
 
-if [ -n "$pythonpath_prepend" ]; then
-    if [ -n "${PYTHONPATH:-}" ]; then
-        export PYTHONPATH="$pythonpath_prepend:$PYTHONPATH"
-    else
-        export PYTHONPATH="$pythonpath_prepend"
-    fi
+if [ ${#pythonpath_entries[@]} -gt 0 ]; then
+    export PYTHONPATH="$(IFS=:; echo "${pythonpath_entries[*]}")"
+else
+    unset PYTHONPATH
 fi
 
 allreduce_target_ms=$(python3 - "$source_root/examples/qwen3/bench_allreduce.py" <<'PY'
