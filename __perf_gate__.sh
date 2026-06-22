@@ -77,7 +77,7 @@ if status or len(values) != 2 or ark_ms >= target_ms:
 PY
 
 kv_cache_status=0
-python3 ../examples/qwen3/bench_kv_cache_slot.py \
+ARK_LOG_LEVEL=WARN python3 ../examples/qwen3/bench_kv_cache_slot.py \
     >"$tmpdir/kv_cache_slot.out" 2>"$tmpdir/kv_cache_slot.err" || kv_cache_status=$?
 
 python3 - \
