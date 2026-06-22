@@ -193,6 +193,39 @@ if mode == "two_slots":
     Executor.reset()
     os._exit(0 if ok else 1)
 
+if mode == "explicit_output":
+    slot_shape = (2, 3)
+    cache = torch.zeros((2,) + slot_shape, dtype=torch.float16, device="cuda:0")
+    token_cpu = torch.arange(1, 7, dtype=torch.float16).reshape(slot_shape)
+    token = token_cpu.to(device="cuda:0")
+    position = torch.zeros(1, dtype=torch.int32, device="cuda:0")
+    output = torch.zeros(slot_shape, dtype=torch.float16, device="cuda:0")
+    torch.cuda.synchronize(0)
+
+    slot = ark.kv_cache_slot(cache, token, position, output=output)
+
+    with ark.Runtime() as rt:
+        rt.launch(device_id=0, loop_mode=True)
+        rt.run(iter=1)
+        rt.stop()
+
+    output_cpu = output.cpu()
+    slot_cpu = slot.to_torch().cpu()
+    position_cpu = position.cpu()
+    ok = (
+        torch.equal(output_cpu, token_cpu)
+        and torch.equal(slot_cpu, token_cpu)
+        and int(position_cpu.item()) == 1
+    )
+    print(json.dumps({
+        "mode": mode,
+        "pass": ok,
+        "position": int(position_cpu.item()),
+    }))
+    sys.stdout.flush()
+    Executor.reset()
+    os._exit(0 if ok else 1)
+
 if mode == "oob":
     cache = torch.zeros((2, 2, 3), dtype=torch.float16, device="cuda:0")
     token = torch.ones((2, 3), dtype=torch.float16, device="cuda:0")
@@ -295,6 +328,15 @@ def test_two_kv_cache_slots_share_position_in_one_graph_launch():
 
     assert result["pass"] is True
     assert result["position"] == 2
+
+
+@pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")
+def test_kv_cache_slot_writes_explicit_output_tensor():
+    """A caller-provided output tensor receives the selected slot."""
+    result = _run_worker("explicit_output")
+
+    assert result["pass"] is True
+    assert result["position"] == 1
 
 
 @pytest.mark.skipif(_gpu_count() < 1, reason="CUDA GPU is required")

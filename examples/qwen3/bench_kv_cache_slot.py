@@ -12,17 +12,35 @@ import os
 import sys
 import time
 
+try:
+    from ._env import _has_compiled_ark
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from _env import _has_compiled_ark
 
-def _prepend_build_pythonpath():
+_REPO_ROOT = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+)
+
+
+def _prepend_compiled_pythonpath():
+    candidates = []
     ark_root = os.environ.get("ARK_ROOT")
-    if not ark_root:
-        return
-    build_python = os.path.join(os.path.abspath(ark_root), "python")
-    if os.path.isdir(build_python) and build_python not in sys.path:
-        sys.path.insert(0, build_python)
+    if ark_root:
+        ark_root = os.path.abspath(ark_root)
+        candidates.append(os.path.join(ark_root, "python"))
+        candidates.append(os.path.join(ark_root, "build", "python"))
+    candidates.append(os.path.join(_REPO_ROOT, "build", "python"))
+
+    for candidate in candidates:
+        candidate = os.path.normpath(candidate)
+        if _has_compiled_ark(candidate):
+            if candidate not in sys.path:
+                sys.path.insert(0, candidate)
+            return
 
 
-_prepend_build_pythonpath()
+_prepend_compiled_pythonpath()
 
 try:
     import torch
@@ -60,6 +78,7 @@ def main():
     parser.add_argument("--kv-heads", type=int, default=8)
     parser.add_argument("--head-dim", type=int, default=128)
     args = parser.parse_args()
+    emitted_gate_line = False
 
     try:
         available = (
@@ -69,9 +88,11 @@ def main():
         available = False
     if not available:
         _perf_gate_line(_SENTINEL_MS)
+        emitted_gate_line = True
         raise SystemExit(1)
     if args.iters < 1 or args.iters > args.max_seq:
         _perf_gate_line(_SENTINEL_MS)
+        emitted_gate_line = True
         raise SystemExit("--iters must satisfy 1 <= --iters <= --max-seq")
 
     try:
@@ -117,6 +138,7 @@ def main():
             elapsed_s * 1000.0 / float(args.iters) if proof_ok else _SENTINEL_MS
         )
         _perf_gate_line(ark_ms)
+        emitted_gate_line = True
         if not proof_ok:
             raise SystemExit(1)
 
@@ -127,7 +149,8 @@ def main():
         Executor.reset()
         os._exit(0)
     except Exception:
-        _perf_gate_line(_SENTINEL_MS)
+        if not emitted_gate_line:
+            _perf_gate_line(_SENTINEL_MS)
         raise
 
 

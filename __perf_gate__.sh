@@ -11,20 +11,39 @@ elif [ ! -f "$source_root/examples/qwen3/bench_kv_cache_slot.py" ] && \
     source_root="$(cd "$PWD/.." && pwd)"
 fi
 
+has_compiled_ark() {
+    local parent="$1"
+    [ -f "$parent/ark/__init__.py" ] || return 1
+    compgen -G "$parent/ark/core*.so" >/dev/null || \
+        compgen -G "$parent/ark/core*.pyd" >/dev/null
+}
+
 if [ -z "${ARK_ROOT:-}" ]; then
-    if compgen -G "$PWD/python/ark/core*" >/dev/null; then
+    if has_compiled_ark "$PWD/python"; then
         ARK_ROOT="$PWD"
-    elif compgen -G "$source_root/build/python/ark/core*" >/dev/null; then
+    elif has_compiled_ark "$source_root/build/python"; then
         ARK_ROOT="$source_root/build"
     else
         ARK_ROOT="$PWD"
     fi
 fi
 export ARK_ROOT
-if [ -n "${PYTHONPATH:-}" ]; then
-    export PYTHONPATH="$ARK_ROOT/python:$PYTHONPATH"
-else
-    export PYTHONPATH="$ARK_ROOT/python"
+
+pythonpath_prepend=""
+if has_compiled_ark "$ARK_ROOT/python"; then
+    pythonpath_prepend="$ARK_ROOT/python"
+elif has_compiled_ark "$ARK_ROOT/build/python"; then
+    pythonpath_prepend="$ARK_ROOT/build/python"
+elif has_compiled_ark "$source_root/build/python"; then
+    pythonpath_prepend="$source_root/build/python"
+fi
+
+if [ -n "$pythonpath_prepend" ]; then
+    if [ -n "${PYTHONPATH:-}" ]; then
+        export PYTHONPATH="$pythonpath_prepend:$PYTHONPATH"
+    else
+        export PYTHONPATH="$pythonpath_prepend"
+    fi
 fi
 
 allreduce_target_ms=$(python3 - "$source_root/examples/qwen3/bench_allreduce.py" <<'PY'

@@ -3,8 +3,8 @@
 
 """Shared subprocess environment helpers for Qwen3 examples.
 
-Used by both ``bench_allreduce.py`` and ``test_allreduce.py`` to build
-a consistent PYTHONPATH / CUDA_VISIBLE_DEVICES env for worker processes.
+Shared by Qwen3 benchmark and test worker subprocesses to build
+a consistent PYTHONPATH / CUDA_VISIBLE_DEVICES env.
 Workers are launched from ``cwd="/"``, so a simple relative path prepend is
 not enough. Prefer the checkout/build under ``ARK_ROOT`` while also supporting
 an already-imported or build-tree ``ark`` package, and synthesize
