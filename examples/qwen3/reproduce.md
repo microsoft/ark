@@ -12,7 +12,7 @@ This document is a reproduce skeleton, not a final comparison report. It lists t
 
 ## Hardware and build assumptions
 
-Use the same topology as ARK CUDA CI:
+Use the target local topology for the Qwen3 comparison:
 
 - 8×A100-80GB.
 - CUDA-capable ARK build container.
@@ -66,9 +66,9 @@ find ../examples/qwen3 -maxdepth 1 \( -name 'bench_*.py' -o -name 'test_*.py' \)
 
 Expected result for this branch: no Qwen3 benchmark or equivalence-test files are listed.
 
-## Rerun slots for future ARK-only evidence
+## Future ARK-only evidence contract (not runnable on this branch)
 
-When a component benchmark lands on this branch, rerun it from `build/` and require exactly one machine-readable line:
+No component benchmark files are present on this branch; when one lands, rerun it from `build/` and require exactly one machine-readable line:
 
 ```bash
 python3 ../examples/qwen3/bench_<component>.py
@@ -87,9 +87,9 @@ These slots are placeholders until the branch contains the named files. They do 
 
 The final Qwen3 ARK vs SGLang comparison remains blocked.
 
-- Q13 end-to-end prefill/decode sweep evidence is unavailable.
-- Q12A-PRE-VPR still needs a strict clean-environment A100 `PERF_GATE name=kv_cache_slot` rerun.
-- PR #270 is unmerged, so its all-reduce evidence is not branch evidence here.
+- End-to-end prefill/decode sweep evidence is not present in this branch.
+- A strict clean-environment A100 `PERF_GATE name=kv_cache_slot` rerun is not present in this branch.
+- All-reduce evidence is not present as a branch artifact here.
 - Required Qwen3 component implementations, equivalence tests, and ARK-only perf gates are missing or blocked on this branch.
 - No branch artifact proves a full ARK Qwen3 op graph, TP=8 decode path, or ≥3.5× end-to-end speedup.
 
