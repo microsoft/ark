@@ -1,7 +1,25 @@
 #!/usr/bin/env bash
 set -u -o pipefail
 
-: "${ARK_ROOT:=$PWD}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source_root="$script_dir"
+if [ ! -f "$source_root/examples/qwen3/bench_kv_cache_slot.py" ] && \
+    [ -f "$PWD/examples/qwen3/bench_kv_cache_slot.py" ]; then
+    source_root="$PWD"
+elif [ ! -f "$source_root/examples/qwen3/bench_kv_cache_slot.py" ] && \
+    [ -f "$PWD/../examples/qwen3/bench_kv_cache_slot.py" ]; then
+    source_root="$(cd "$PWD/.." && pwd)"
+fi
+
+if [ -z "${ARK_ROOT:-}" ]; then
+    if compgen -G "$PWD/python/ark/core*" >/dev/null; then
+        ARK_ROOT="$PWD"
+    elif compgen -G "$source_root/build/python/ark/core*" >/dev/null; then
+        ARK_ROOT="$source_root/build"
+    else
+        ARK_ROOT="$PWD"
+    fi
+fi
 export ARK_ROOT
 if [ -n "${PYTHONPATH:-}" ]; then
     export PYTHONPATH="$ARK_ROOT/python:$PYTHONPATH"
@@ -9,11 +27,12 @@ else
     export PYTHONPATH="$ARK_ROOT/python"
 fi
 
-allreduce_target_ms=$(python3 - <<'PY'
+allreduce_target_ms=$(python3 - "$source_root/examples/qwen3/bench_allreduce.py" <<'PY'
 import importlib.util
 import pathlib
+import sys
 
-path = pathlib.Path("../examples/qwen3/bench_allreduce.py")
+path = pathlib.Path(sys.argv[1])
 spec = importlib.util.spec_from_file_location("bench_allreduce", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -29,9 +48,9 @@ trap 'rm -rf "$tmpdir"' EXIT
 gate_status=0
 
 allreduce_status=0
-python3 ../examples/qwen3/bench_allreduce.py --world-size 2 --shape decode \
+python3 "$source_root/examples/qwen3/bench_allreduce.py" --world-size 2 --shape decode \
     >"$tmpdir/allreduce_tp2.out" 2>"$tmpdir/allreduce_tp2.err" || allreduce_status=1
-python3 ../examples/qwen3/bench_allreduce.py --world-size 8 --shape decode \
+python3 "$source_root/examples/qwen3/bench_allreduce.py" --world-size 8 --shape decode \
     >"$tmpdir/allreduce_tp8.out" 2>"$tmpdir/allreduce_tp8.err" || allreduce_status=1
 
 python3 - \
@@ -77,7 +96,7 @@ if status or len(values) != 2 or ark_ms >= target_ms:
 PY
 
 kv_cache_status=0
-ARK_LOG_LEVEL=WARN python3 ../examples/qwen3/bench_kv_cache_slot.py \
+ARK_LOG_LEVEL=WARN python3 "$source_root/examples/qwen3/bench_kv_cache_slot.py" \
     >"$tmpdir/kv_cache_slot.out" 2>"$tmpdir/kv_cache_slot.err" || kv_cache_status=$?
 
 python3 - \
