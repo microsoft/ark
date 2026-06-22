@@ -8,16 +8,32 @@ The gate target is the Qwen3 TP=8 attention decode budget from PROFILE.md:
 """
 
 import argparse
+import os
+import sys
 import time
+
+
+def _prepend_build_pythonpath():
+    ark_root = os.environ.get("ARK_ROOT")
+    if not ark_root:
+        return
+    build_python = os.path.join(os.path.abspath(ark_root), "python")
+    if os.path.isdir(build_python) and build_python not in sys.path:
+        sys.path.insert(0, build_python)
+
+
+_prepend_build_pythonpath()
 
 try:
     import torch
-except Exception:
+except Exception as exc:
+    print(f"ERROR: failed to import torch: {exc}", file=sys.stderr)
     torch = None
 
 try:
     import ark
-except Exception:
+except Exception as exc:
+    print(f"ERROR: failed to import ark: {exc}", file=sys.stderr)
     ark = None
 
 
@@ -103,6 +119,13 @@ def main():
         _perf_gate_line(ark_ms)
         if not proof_ok:
             raise SystemExit(1)
+
+        # Avoid Python shutdown/destructor races after valid ARK evidence.
+        sys.stdout.flush()
+        from ark.executor import Executor
+
+        Executor.reset()
+        os._exit(0)
     except Exception:
         _perf_gate_line(_SENTINEL_MS)
         raise

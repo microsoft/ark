@@ -3,7 +3,11 @@ set -u -o pipefail
 
 : "${ARK_ROOT:=$PWD}"
 export ARK_ROOT
-export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
+if [ -n "${PYTHONPATH:-}" ]; then
+    export PYTHONPATH="$ARK_ROOT/python:$PYTHONPATH"
+else
+    export PYTHONPATH="$ARK_ROOT/python"
+fi
 
 # SGLang PROFILE.md Qwen3 TP=8 attention decode target: 20.93 ms / 640 token-steps.
 target_ms="0.0327"
@@ -13,13 +17,15 @@ trap 'rm -rf "$tmpdir"' EXIT
 status=0
 python3 ../examples/qwen3/bench_kv_cache_slot.py >"$tmpdir/out" 2>"$tmpdir/err" || status=$?
 
-python3 - "$tmpdir/out" "$status" "$target_ms" <<'PY'
+python3 - "$tmpdir/out" "$tmpdir/err" "$status" "$target_ms" <<'PY'
+import os
 import re
 import sys
 
 out_path = sys.argv[1]
-status = int(sys.argv[2])
-target_ms = float(sys.argv[3])
+err_path = sys.argv[2]
+status = int(sys.argv[3])
+target_ms = float(sys.argv[4])
 pattern = re.compile(
     r"^PERF_GATE name=kv_cache_slot "
     r"ark_ms=([0-9]+(?:\.[0-9]+)?) "
@@ -38,7 +44,7 @@ lines = [
     for ln in open(out_path, encoding="utf-8").read().splitlines()
     if ln.startswith("PERF_GATE ")
 ]
-if status or len(lines) != 1:
+if status or os.path.getsize(err_path) != 0 or len(lines) != 1:
     print(fallback)
     raise SystemExit(1)
 
