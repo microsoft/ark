@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+bench_py="$script_dir/examples/qwen3/bench_allreduce.py"
+if [[ ! -f "$bench_py" ]]; then
+  echo "ERROR: missing benchmark: $bench_py" >&2
+  exit 1
+fi
+
 : "${ARK_ROOT:=$PWD}"
 export ARK_ROOT
 export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
@@ -8,19 +15,19 @@ export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 status=0
-python3 ../examples/qwen3/bench_allreduce.py --world-size 2 --shape decode --input-mode all \
+python3 "$bench_py" --world-size 2 --shape decode --input-mode all \
   >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-python3 ../examples/qwen3/bench_allreduce.py --world-size 8 --shape decode --input-mode all \
+python3 "$bench_py" --world-size 8 --shape decode --input-mode all \
   >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
-python3 - "$status" "$tmpdir/tp2.log" "$tmpdir/tp8.log" <<'PY'
+python3 - "$status" "$bench_py" "$tmpdir/tp2.log" "$tmpdir/tp8.log" <<'PY'
 import importlib.util
 import pathlib
 import sys
 
 status = int(sys.argv[1])
-logs = sys.argv[2:]
-path = pathlib.Path("../examples/qwen3/bench_allreduce.py")
+path = pathlib.Path(sys.argv[2])
+logs = sys.argv[3:]
 spec = importlib.util.spec_from_file_location("bench_allreduce", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
