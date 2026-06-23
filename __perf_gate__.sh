@@ -51,6 +51,6 @@ print(
     f"PERF_GATE name=allreduce ark_ms={ark_ms:.4f} "
     f"sglang_ms={target_ms:.4f} ratio={ratio:.4f}"
 )
-if status or missing or sentinel or ark_ms > target_ms:
+if status or missing or sentinel or ark_ms >= target_ms:
     raise SystemExit(1)
 PY
