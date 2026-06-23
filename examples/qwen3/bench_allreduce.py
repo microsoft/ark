@@ -233,6 +233,8 @@ def run_bench(world_size, timeout, shape, input_mode):
             f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
         )
     print(f"{'=' * 88}")
+    # Supplemental per-shape/mode machine-readable rows. The root perf gate
+    # validates these rows for TP=2/8 external/internal decode coverage.
     for d in results:
         ark_ms = d["latency_us"] / 1000.0
         print(
@@ -242,6 +244,19 @@ def run_bench(world_size, timeout, shape, input_mode):
         )
     print()
     return results, any_failed
+
+
+def _perf_gate_ark_ms(results):
+    """Return compatibility PERF_GATE latency from external decode only."""
+    decode_external = [
+        r
+        for r in results
+        if r["n_elements"] == SHAPES["decode"][1]
+        and r["input_mode"] == "external"
+    ]
+    if decode_external:
+        return decode_external[0]["latency_us"] / 1000.0
+    return 999999.0
 
 
 def main():
@@ -274,14 +289,7 @@ def main():
         args.world_size, args.timeout, args.shape, args.input_mode
     )
 
-    decode = [r for r in results if r["n_elements"] == SHAPES["decode"][1]]
-    decode_external = [r for r in decode if r["input_mode"] == "external"]
-    if decode_external:
-        ark_ms = decode_external[0]["latency_us"] / 1000.0
-    elif decode:
-        ark_ms = decode[0]["latency_us"] / 1000.0
-    else:
-        ark_ms = 999999.0
+    ark_ms = _perf_gate_ark_ms(results)
     ratio = ark_ms / _DECODE_TARGET_MS
     print(
         f"PERF_GATE name=allreduce"
@@ -292,8 +300,11 @@ def main():
     if any_failed:
         print("ERROR: one or more benchmark workers failed", file=sys.stderr)
         raise SystemExit(1)
-    if not decode:
-        print("ERROR: decode benchmark produced no result", file=sys.stderr)
+    if ark_ms == 999999.0:
+        print(
+            "ERROR: external decode benchmark produced no result for PERF_GATE",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
 
 
