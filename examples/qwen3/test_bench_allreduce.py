@@ -126,6 +126,44 @@ def test_run_bench_decode_reports_both_required_modes(
     assert {result["n_elements"] for result in results} == {4096}
 
 
+def test_decode_gate_parser_requires_tp2_tp8_and_both_modes():
+    rows = [
+        (
+            "RESULT name=allreduce_decode shape=decode "
+            f"tp={world_size} mode={mode} ark_ms={ark_ms:.4f} "
+            f"latency_us={ark_ms * 1000.0:.3f}"
+        )
+        for world_size, mode, ark_ms in [
+            (2, "external", 0.2),
+            (2, "internal", 0.3),
+            (8, "external", 0.4),
+            (8, "internal", 0.5),
+        ]
+    ]
+
+    assert (
+        bench_allreduce._decode_gate_ark_ms_from_logs(["\n".join(rows)])
+        == 0.5
+    )
+    assert (
+        bench_allreduce._decode_gate_ark_ms_from_logs(
+            ["\n".join(rows[:-1])]
+        )
+        == 999999.0
+    )
+    assert (
+        bench_allreduce._decode_gate_ark_ms_from_logs(
+            [
+                "\n".join(
+                    row.replace("allreduce_decode", "allreduce")
+                    for row in rows
+                )
+            ]
+        )
+        == 999999.0
+    )
+
+
 def test_run_bench_internal_mode_only_preserves_metadata(monkeypatch):
     launches = _patch_popen(monkeypatch)
 
@@ -169,7 +207,7 @@ def test_main_default_reports_all_modes_and_keeps_external_gate(
 
     out, err = capsys.readouterr()
     assert calls == [(2, 120, "all", "all")]
-    assert "PERF_GATE name=allreduce ark_ms=2.0000" in out
+    assert "PERF_GATE name=allreduce_decode ark_ms=2.0000" in out
     assert err == ""
 
 
@@ -191,7 +229,7 @@ def test_main_perf_gate_does_not_fallback_to_internal(monkeypatch, capsys):
 
     out, err = capsys.readouterr()
     assert exc_info.value.code == 1
-    assert "PERF_GATE name=allreduce ark_ms=999999.0000" in out
+    assert "PERF_GATE name=allreduce_decode ark_ms=999999.0000" in out
     assert (
         "ERROR: external decode benchmark produced no result for PERF_GATE"
         in err

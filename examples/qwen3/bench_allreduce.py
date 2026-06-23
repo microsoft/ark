@@ -26,6 +26,7 @@ NO torch device sync while launched, NO CUDA events.
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 
@@ -116,6 +117,7 @@ os._exit(0)
 # SGLang PROFILE.md Q7 nccl / comm target: 214.69 ms over 657 calls
 # on 8xA100 TP=8, batch=1 decode-dominated Qwen3-8B.
 _DECODE_TARGET_MS = 214.69 / 657.0
+_DECODE_GATE_NAME = "allreduce_decode"
 
 SHAPES = {
     "decode": ("decode  (1, 4096)", 4096),
@@ -238,7 +240,7 @@ def run_bench(world_size, timeout, shape, input_mode):
     for d in results:
         ark_ms = d["latency_us"] / 1000.0
         print(
-            f"RESULT name=allreduce shape={d['shape']} "
+            f"RESULT name={_DECODE_GATE_NAME} shape={d['shape']} "
             f"tp={d['world_size']} mode={d['input_mode']} "
             f"ark_ms={ark_ms:.4f} latency_us={d['latency_us']:.3f}"
         )
@@ -247,7 +249,7 @@ def run_bench(world_size, timeout, shape, input_mode):
 
 
 def _perf_gate_ark_ms(results):
-    """Return compatibility PERF_GATE latency from external decode only."""
+    """Return per-run PERF_GATE latency from external decode only."""
     decode_external = [
         r
         for r in results
@@ -257,6 +259,31 @@ def _perf_gate_ark_ms(results):
     if decode_external:
         return decode_external[0]["latency_us"] / 1000.0
     return 999999.0
+
+
+def _decode_gate_ark_ms_from_logs(log_texts, required_world_sizes=(2, 8)):
+    """Require decode RESULT rows for every TP/input-mode pair."""
+    pattern = re.compile(
+        rf"RESULT name={_DECODE_GATE_NAME} shape=decode tp=(\d+) "
+        rf"mode=({'|'.join(INPUT_MODES)}) ark_ms=([0-9.]+)"
+    )
+    values = {}
+    for text in log_texts:
+        for match in pattern.finditer(text):
+            values[(int(match.group(1)), match.group(2))] = float(
+                match.group(3)
+            )
+
+    expected = {
+        (world_size, mode)
+        for world_size in required_world_sizes
+        for mode in INPUT_MODES
+    }
+    missing = expected - values.keys()
+    sentinel = [v for v in values.values() if v <= 0.0 or v >= 999999.0]
+    if missing or sentinel:
+        return 999999.0
+    return max(values[pair] for pair in expected)
 
 
 def main():
@@ -292,7 +319,7 @@ def main():
     ark_ms = _perf_gate_ark_ms(results)
     ratio = ark_ms / _DECODE_TARGET_MS
     print(
-        f"PERF_GATE name=allreduce"
+        f"PERF_GATE name={_DECODE_GATE_NAME}"
         f" ark_ms={ark_ms:.4f}"
         f" sglang_ms={_DECODE_TARGET_MS:.4f}"
         f" ratio={ratio:.4f}"
