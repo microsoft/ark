@@ -29,9 +29,7 @@ class _FakeProcess:
         shape = self.argv[6]
         label = self.argv[7]
         mode = self.argv[8]
-        latency_us = (200.0 if mode == "external" else 500.0) + (
-            100.0 * rank
-        )
+        latency_us = (200.0 if mode == "external" else 500.0) + (100.0 * rank)
         result = {
             "rank": rank,
             "shape": shape,
@@ -106,9 +104,7 @@ def test_run_bench_all_input_modes_launches_and_aggregates(monkeypatch):
 
 
 @pytest.mark.parametrize("world_size", (2, 8))
-def test_run_bench_decode_reports_both_required_modes(
-    monkeypatch, world_size
-):
+def test_run_bench_decode_reports_both_required_modes(monkeypatch, world_size):
     _patch_popen(monkeypatch)
 
     results, any_failed = bench_allreduce.run_bench(
@@ -142,21 +138,17 @@ def test_decode_gate_parser_requires_tp2_tp8_and_both_modes():
     ]
 
     assert (
-        bench_allreduce._decode_gate_ark_ms_from_logs(["\n".join(rows)])
-        == 0.5
+        bench_allreduce._decode_gate_ark_ms_from_logs(["\n".join(rows)]) == 0.5
     )
     assert (
-        bench_allreduce._decode_gate_ark_ms_from_logs(
-            ["\n".join(rows[:-1])]
-        )
+        bench_allreduce._decode_gate_ark_ms_from_logs(["\n".join(rows[:-1])])
         == 999999.0
     )
     assert (
         bench_allreduce._decode_gate_ark_ms_from_logs(
             [
                 "\n".join(
-                    row.replace("allreduce_decode", "allreduce")
-                    for row in rows
+                    row.replace("allreduce_decode", "allreduce") for row in rows
                 )
             ]
         )
