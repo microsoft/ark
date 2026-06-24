@@ -15,9 +15,9 @@ export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 status=0
-python3 "$bench_py" --world-size 2 --shape decode --input-mode all \
+python3 "$bench_py" --world-size 2 --shape all --input-mode all \
   >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-python3 "$bench_py" --world-size 8 --shape decode --input-mode all \
+python3 "$bench_py" --world-size 8 --shape all --input-mode all \
   >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
 python3 - "$status" "$bench_py" "$tmpdir/tp2.log" "$tmpdir/tp8.log" <<'PY'
