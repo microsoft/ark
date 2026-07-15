@@ -452,97 +452,279 @@ Json ModelOpRecvReduceSendPacket::default_config(
     return config;
 }
 
-// Fused intra-node packet allreduce. Replaces the three-op chain
-// (send_packet → recv_reduce_send_packet → recv_packet) with a single op.
-ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
+// ---------------------------------------------------------------------------
+// Tile-local one-shot packet all-reduce (fuses with a preceding matmul's tiles).
+// ---------------------------------------------------------------------------
+ModelOpAllReducePacket::ModelOpAllReducePacket(
     ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
-    uint32_t flag, ModelTensorRef scratch,
-    const std::vector<ModelTensorRef> &peer_scratch_refs)
-    : ModelOp("AllReducePacketFused") {
+    const std::vector<ModelTensorRef> &peer_output_refs)
+    : ModelOp("AllReducePacket") {
     check_null(input);
     check_null(output);
-    check_null(scratch);
-    if (scratch->buffer()->rank() != rank && scratch->buffer()->rank() != -1) {
-        ERR(ModelError,
-            "invalid local scratch buffer rank: ", scratch->buffer()->rank(),
-            ", expected: ", rank);
+    if (input->shape().ndims() < 2) {
+        ERR(ModelError, "all_reduce_packet requires a 2-D input");
     }
     uint32_t n_peers = rank_num - 1;
-    if (peer_scratch_refs.size() != n_peers) {
-        ERR(ModelError, "expected ", n_peers, " peer scratch refs, got ",
-            peer_scratch_refs.size());
+    if (peer_output_refs.size() != n_peers) {
+        ERR(ModelError, "expected ", n_peers, " peer output refs, got ",
+            peer_output_refs.size());
     }
-    // The peer scratches are listed as write tensors purely so that
-    // `CommResource::connect()` discovers the remote ranks and sets up SM
-    // channels to them. The kernel uses `ARK_SM_CHANS[remote_rank].dst_`
-    // directly + the local scratch offset (which is identical on every rank
-    // for symmetric internal-buffer allocation).
-    read_tensors_ = {input, scratch};
+    // Peer output refs are listed as write tensors only so CommResource::connect
+    // sets up memory channels; the kernel reaches peers' scratch by arena offset
+    // (symmetric allocation). Same convention as the other packet collectives.
+    read_tensors_ = {input};
     write_tensors_ = {output};
-    for (auto &p : peer_scratch_refs) {
+    for (auto &p : peer_output_refs) {
         write_tensors_.push_back(p);
+    }
+    // Packet scratch: 2 double-buffer halves × WorldSize slots × NPkts packets =
+    // 4 * WorldSize * nelems elements. Identical layout to the fused one-shot;
+    // each block only touches its tile's packet positions within a slot.
+    {
+        DimType nelems = input->shape().nelems();
+        DimType scratch_nelems =
+            static_cast<DimType>(4) * static_cast<DimType>(rank_num) * nelems;
+        ModelTensorRef scratch = std::make_shared<ModelTensor>(
+            input->data_type(), std::make_shared<ModelBuffer>(rank),
+            Dims(scratch_nelems));
+        read_tensors_.push_back(scratch);
     }
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
     result_tensors_ = {result};
     args_ = {
-        {"Flag", ModelOpArg(flag)},
         {"NPeers", ModelOpArg(n_peers)},
         {"Rank", ModelOpArg(rank)},
     };
     verify();
 }
 
-std::string ModelOpAllReducePacketFused::impl_name(const Json &config) const {
+std::string ModelOpAllReducePacket::impl_name(const Json &config) const {
     check_fields_config(config, {"NumProcs", "NumWarps", "PacketType",
                                  "NumTasks", "SramBytes", "Tile"});
     auto &input = read_tensors_[0];
-    uint32_t flag = args_.at("Flag").value<uint32_t>();
+    uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
+    int rank = args_.at("Rank").value<int>();
+    // Tile is chosen by the planner (config "Tile"), like other tiled ops.
+    std::vector<DimType> tile = config.at("Tile").get<std::vector<DimType>>();
+    if (tile.size() != 2) {
+        ERR(PlanError, "AllReducePacket Tile must have 2 elements");
+    }
+    int tile_rows = static_cast<int>(tile[0]);
+    int tile_cols = static_cast<int>(tile[1]);
+    int num_warps = config.at("NumWarps");
+    int num_procs = config.at("NumProcs");
+    std::string packet_type = config.at("PacketType");
+    DimType rows = input->shape()[-2];
+    DimType cols = input->shape()[-1];
+    return function_name_string(
+        "allreduce_packet",
+        {std::to_string(n_peers), std::to_string(rank),
+         std::to_string(num_procs), std::to_string(num_warps), packet_type,
+         input->data_type()->type_str(), std::to_string(rows),
+         std::to_string(cols), std::to_string(tile_rows),
+         std::to_string(tile_cols)});
+}
+
+std::vector<ModelOpArg> ModelOpAllReducePacket::impl_args(
+    [[maybe_unused]] const Json &config) const {
+    // (output, input, scratch, scratch_offset)
+    return {write_tensors_[0], read_tensors_[0], read_tensors_[1],
+            ModelOffset(read_tensors_[1])};
+}
+
+Json ModelOpAllReducePacket::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
+    Json config;
+    config["PacketType"] = "mscclpp::LL16Packet";
+    auto &input = read_tensors_[0];
+    DimType rows = input->shape()[-2];
+    DimType cols = input->shape()[-1];
+    // ElemsPerPkt = payload(8B) / dtype_bytes (4 for fp16/bf16). TileCols must
+    // divide Cols and be a multiple of ElemsPerPkt (kernel packet layout).
+    DimType elems_per_pkt =
+        static_cast<DimType>(8) / input->data_type()->bytes();
+    // Auto tile: a 64×64 column-tile when it fits, else the packet-aligned
+    // granularity. The planner derives NumTasks from the tile.
+    DimType tile_rows = 64;
+    DimType tile_cols = 64;
+    if (cols % tile_cols != 0 || tile_cols % elems_per_pkt != 0) {
+        tile_cols = elems_per_pkt;
+    }
+    int n_row_tiles = static_cast<int>((rows + tile_rows - 1) / tile_rows);
+    int n_col_tiles = static_cast<int>(cols / tile_cols);
+    int n_tiles = n_row_tiles * n_col_tiles;
+    // NumWarps must match the fused matmul's NumWarps (see allreduce_packet in
+    // comm.h): a wider AR barrier collides with the matmul's warp-group barrier
+    // in the same block. The down_proj matmul uses 4 warps.
+    config["NumWarps"] = 4;
+    config["SramBytes"] = 0;
+    config["Tile"] = {tile_rows, tile_cols};
+    config["NumTasks"] = n_tiles;
+    config["NumProcs"] = n_tiles;
+    return config;
+}
+
+ModelOpAllReduceRsag::ModelOpAllReduceRsag(
+    ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
+    const std::vector<ModelTensorRef> &peer_output_refs)
+    : ModelOp("AllReduceRsag") {
+    check_null(input);
+    check_null(output);
+    uint32_t n_peers = rank_num - 1;
+    if (peer_output_refs.size() != n_peers) {
+        ERR(ModelError, "expected ", n_peers, " peer output refs, got ",
+            peer_output_refs.size());
+    }
+    // Peer output refs are write tensors only so CommResource::connect sets up
+    // the memory channels; the kernel reaches peers' scratch by arena offset
+    // (symmetric allocation). Same convention as the packet collectives.
+    read_tensors_ = {input};
+    write_tensors_ = {output};
+    for (auto &p : peer_output_refs) {
+        write_tensors_.push_back(p);
+    }
+    // Peer-visible scratch: WorldSize*nInt4PerRank int4 (== nelems elems) to
+    // receive peers' pushed contributions, followed by a WorldSize-slot uint32
+    // flag region at byte offset nelems*sizeof(dtype). 128 extra elements
+    // (>= 2*WorldSize) cover the flags with margin.
+    {
+        DimType nelems = input->shape().nelems();
+        DimType scratch_nelems = nelems + 128;
+        ModelTensorRef scratch = std::make_shared<ModelTensor>(
+            input->data_type(), std::make_shared<ModelBuffer>(rank),
+            Dims(scratch_nelems));
+        read_tensors_.push_back(scratch);
+    }
+    ModelTensorRef result = std::make_shared<ModelTensor>(*output);
+    result_tensors_ = {result};
+    args_ = {
+        {"NPeers", ModelOpArg(n_peers)},
+        {"Rank", ModelOpArg(rank)},
+    };
+    verify();
+}
+
+std::string ModelOpAllReduceRsag::impl_name(const Json &config) const {
+    check_fields_config(config,
+                        {"NumProcs", "NumWarps", "NumTasks", "SramBytes"});
+    auto &input = read_tensors_[0];
+    uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
+    int rank = args_.at("Rank").value<int>();
+    int num_warps = config.at("NumWarps");
+    int num_procs = config.at("NumProcs");
+    DimType nelems = input->shape().nelems();
+    return function_name_string(
+        "allreduce_rsag",
+        {std::to_string(n_peers), std::to_string(rank),
+         std::to_string(num_warps), input->data_type()->type_str(),
+         std::to_string(nelems), std::to_string(num_procs)});
+}
+
+std::vector<ModelOpArg> ModelOpAllReduceRsag::impl_args(
+    [[maybe_unused]] const Json &config) const {
+    // (output, input, scratch, output_offset, scratch_offset). Write-based:
+    // the kernel pushes contributions to peers' scratch and the reduced chunk
+    // to peers' output via peer arena base (ARK_SM_CHANS.dst_) + the tensor's
+    // arena offset; all reads are local, so no input_offset is needed.
+    return {write_tensors_[0], read_tensors_[0], read_tensors_[1],
+            ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[1])};
+}
+
+Json ModelOpAllReduceRsag::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
+    Json config;
+    // Grid-wide: one uop (block) per processor; every block runs all phases.
+    // 64 blocks x 8 warps. 8 warps stays within the fused mega's
+    // warp_range=[0,8]; wider blocks (16/512 threads) gave no measurable gain
+    // and 32/1024 exceeds ARK's 2-warp-barrier limit (512 threads). The
+    // write-based fullmesh kernel measures at NVLink NCCL-parity for 16-33MB
+    // (~158 GB/s busbw on 8xA100 NVSwitch, == nccl-tests).
+    int n_procs = 64;
+    config["NumWarps"] = 8;
+    config["SramBytes"] = 0;
+    config["NumTasks"] = n_procs;
+    config["NumProcs"] = n_procs;
+    return config;
+}
+
+ModelOpAllReduceAllpairPacket::ModelOpAllReduceAllpairPacket(
+    ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
+    const std::vector<ModelTensorRef> &peer_output_refs)
+    : ModelOp("AllReduceAllpairPacket") {
+    check_null(input);
+    check_null(output);
+    uint32_t n_peers = rank_num - 1;
+    if (peer_output_refs.size() != n_peers) {
+        ERR(ModelError, "expected ", n_peers, " peer output refs, got ",
+            peer_output_refs.size());
+    }
+    // Peer output refs are write tensors only so CommResource::connect sets up
+    // the memory channels; the kernel reaches peers' scratch by arena offset
+    // (symmetric allocation). Same convention as the other packet collectives.
+    read_tensors_ = {input};
+    write_tensors_ = {output};
+    for (auto &p : peer_output_refs) {
+        write_tensors_.push_back(p);
+    }
+    // Packet scratch: 2 double-buffer halves × WorldSize slots × NPkts packets =
+    // 4 * WorldSize * nelems data elements (each PacketType is 2*Payload bytes).
+    // Identical layout/sizing to the one-shot packet AR.
+    {
+        DimType nelems = input->shape().nelems();
+        DimType scratch_nelems =
+            static_cast<DimType>(4) * static_cast<DimType>(rank_num) * nelems;
+        ModelTensorRef scratch = std::make_shared<ModelTensor>(
+            input->data_type(), std::make_shared<ModelBuffer>(rank),
+            Dims(scratch_nelems));
+        read_tensors_.push_back(scratch);
+    }
+    ModelTensorRef result = std::make_shared<ModelTensor>(*output);
+    result_tensors_ = {result};
+    args_ = {
+        {"NPeers", ModelOpArg(n_peers)},
+        {"Rank", ModelOpArg(rank)},
+    };
+    verify();
+}
+
+std::string ModelOpAllReduceAllpairPacket::impl_name(const Json &config) const {
+    check_fields_config(
+        config, {"NumProcs", "NumWarps", "PacketType", "NumTasks", "SramBytes"});
+    auto &input = read_tensors_[0];
     uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
     int rank = args_.at("Rank").value<int>();
     int num_warps = config.at("NumWarps");
     int num_procs = config.at("NumProcs");
     std::string packet_type = config.at("PacketType");
-    // Total fp16 elements in input — compile-time constant.
-    DimType nelems_total = input->shape().nelems();
+    DimType nelems = input->shape().nelems();
     return function_name_string(
-        "allreduce_packet_fused",
+        "allreduce_allpair_packet",
         {std::to_string(n_peers), std::to_string(rank),
-         std::to_string(num_procs), std::to_string(num_warps), packet_type,
-         input->data_type()->type_str(), std::to_string(nelems_total),
-         std::to_string(flag)});
+         std::to_string(num_warps), packet_type, input->data_type()->type_str(),
+         std::to_string(nelems), std::to_string(num_procs)});
 }
 
-std::vector<ModelOpArg> ModelOpAllReducePacketFused::impl_args(
+std::vector<ModelOpArg> ModelOpAllReduceAllpairPacket::impl_args(
     [[maybe_unused]] const Json &config) const {
-    // (output, input, scratch_ptr, scratch_offset_remote, input_offset)
+    // (output, input, scratch, scratch_offset)
     return {write_tensors_[0], read_tensors_[0], read_tensors_[1],
-            ModelOffset(read_tensors_[1]), ModelOffset(read_tensors_[0])};
+            ModelOffset(read_tensors_[1])};
 }
 
-Json ModelOpAllReducePacketFused::default_config(
+Json ModelOpAllReduceAllpairPacket::default_config(
     [[maybe_unused]] const ArchRef arch) const {
     Json config;
-    config["PacketType"] = "mscclpp::LL16Packet";
-    // Tuning follows mscclpp's `getDefaultBlockNumAndThreadNum` in
-    // src/ext/collectives/allreduce/allreduce_packet.cu:
-    //   - small (<32 KB): 4 blocks per peer, 1024 threads
-    //   - larger:         8 blocks per peer, 512 threads (<=153KB) or 1024
-    // We translate "blocks per peer × n_peers" into NumTasks (the planner
-    // hands us that many blocks, capped by the ProcessorRange when the
-    // user supplies a PlannerContext).
-    auto &input = read_tensors_[0];
-    DimType input_bytes = input->shape().nelems() * input->data_type()->bytes();
+    // mscclpp uses LL8Packet (8B: 4 data + 4 flag) for the <=16KB allpair path.
+    config["PacketType"] = "mscclpp::LL8Packet";
     uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
-    int blocks_per_peer = (input_bytes < (32 << 10)) ? 4 : 8;
-    int num_warps = 32;  // 1024 threads / 32 = 32 warps per block
-    if (input_bytes >= (32 << 10) && input_bytes <= 153600) {
-        num_warps = 16;  // 512 threads
-    }
-    config["NumWarps"] = num_warps;
+    // mscclpp getDefaultBlockNumAndThreadNum: (worldSize-1)*4 blocks. Threads are
+    // capped at ARK's 8-warp (256-thread) task so the op fits the fused mega's
+    // warp_range=[0,8]; one full warp per peer is required (NumWarps > NPeers).
+    int n_procs = static_cast<int>(n_peers) * 4;  // 28 for world=8
+    config["NumWarps"] = 8;
     config["SramBytes"] = 0;
-    config["Tile"] = {1, 1};  // not used by this op, but required by codegen
-    config["NumTasks"] = blocks_per_peer * static_cast<int>(n_peers);
-    config["NumProcs"] = config["NumTasks"];
+    config["NumTasks"] = n_procs;
+    config["NumProcs"] = n_procs;
     return config;
 }
 

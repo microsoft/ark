@@ -311,18 +311,20 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                 ss_desc << "(" << tns->data_type()->type_str() << "*)_"
                         << ptr_idx;
             } else if (arg.type_name() == "OFFSET") {
+                // OFFSET args are offsets into ARK registered memory; external
+                // placeholders must be passed through TENSOR-pointer kernels or
+                // staged into internal tensors before OFFSET-only kernels.
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_id = moff.buffer_id();
                 auto buf_info = buf_reg.get(buffer_id);
                 if (buf_info && buf_info->is_external) {
                     ERR(InternalError, "cannot offset external buffer");
                 }
-                size_t buffer_offset;
                 auto it = buffer_id_to_offset_.find(buffer_id);
                 if (it == buffer_id_to_offset_.end()) {
                     ERR(InternalError, "buffer ID not found: ", buffer_id);
                 }
-                buffer_offset = it->second;
+                size_t buffer_offset = it->second;
                 size_t offset = buffer_offset + moff.value();
                 ss_desc << offset;
             } else {

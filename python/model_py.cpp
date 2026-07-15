@@ -140,5 +140,12 @@ void register_model(py::module &m) {
              py::arg("name"))
         .def("all_reduce_packet", &ark::Model::all_reduce_packet,
              py::arg("input"), py::arg("rank"), py::arg("world_size"),
-             py::arg("output"), py::arg("name"));
+             py::arg("output"), py::arg("name"))
+        .def("all_reduce_rsag", &ark::Model::all_reduce_rsag,
+             py::arg("input"), py::arg("rank"), py::arg("world_size"),
+             py::arg("output"), py::arg("name"))
+        .def("all_reduce_allpair_packet",
+             &ark::Model::all_reduce_allpair_packet, py::arg("input"),
+             py::arg("rank"), py::arg("world_size"), py::arg("output"),
+             py::arg("name"));
 }

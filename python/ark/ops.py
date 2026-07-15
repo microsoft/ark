@@ -37,6 +37,8 @@ __all__ = [
     "div",
     "all_reduce",
     "all_reduce_packet",
+    "all_reduce_rsag",
+    "all_reduce_allpair_packet",
     "embedding",
     "cast",
     "copy",
@@ -676,20 +678,21 @@ def all_reduce_packet(
     name: str = "",
 ) -> Tensor:
     """
-    Packet-based intra-node all-reduce — single-shot reduce-scatter + allgather using
-    LL packet channels (fused data+flag write). NOT a ring chain; per-rank
-    cost is constant in `world_size` for the in-block portion, and the entire
-    operation completes in 3 task phases regardless of `world_size`.
+    Tile-local one-shot LL-packet all-reduce (the only packet all-reduce
+    primitive). Block `uop_idx` reduces only its own column-tile of the 2-D
+    `input`. The tile is chosen by the planner (config "Tile"), like other
+    tiled ops; when it matches a preceding fused matmul's UnitOutDims, the
+    matmul→AR handoff is intra-block (no device-wide barrier) and each tile's
+    NVLink exchange overlaps other tiles' matmul. A tile grid covering the whole
+    tensor gives the plain one-shot all-reduce behavior.
 
     Args:
-        input (Tensor): The input tensor to be reduced. Must be contiguous.
+        input (Tensor): 2-D input tensor to be reduced. Must be contiguous. Its
+            last dim must be a multiple of (8 / dtype_bytes).
         rank (int): The rank of the current process.
-        world_size (int): The total number of processes. The tensor's
-            element count must be divisible by (4 * world_size) for FP16.
-        output (Tensor, optional): The output tensor. If provided, the result
-            will be stored in this tensor. Defaults to NullTensor.
-        name (str, optional): The name of the operation. Defaults to
-            "".
+        world_size (int): The total number of processes.
+        output (Tensor, optional): The output tensor. Defaults to NullTensor.
+        name (str, optional): The name of the operation. Defaults to "".
 
     Returns:
         Tensor: The reduced tensor.
@@ -699,6 +702,74 @@ def all_reduce_packet(
     if output is not NullTensor:
         output = output._tensor
     _tensor = Model.get_model().all_reduce_packet(
+        input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+def all_reduce_rsag(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    output: Tensor = NullTensor,
+    name: str = "",
+) -> Tensor:
+    """
+    Read-based Reduce-Scatter + All-Gather all-reduce, bandwidth-optimal (O(N)
+    traffic) for LARGE messages where the one-shot packet all-reduce
+    (O(N*peers)) is inefficient. A standalone grid-wide collective (its own
+    processor group), so a grid barrier separates it from a preceding producer.
+
+    Args:
+        input (Tensor): Input tensor to be reduced. Must be contiguous; its
+            element count must be divisible by world_size * (16 / dtype_bytes).
+        rank (int): The rank of the current process.
+        world_size (int): The total number of processes.
+        output (Tensor, optional): The output tensor. Defaults to NullTensor.
+        name (str, optional): The name of the operation. Defaults to "".
+
+    Returns:
+        Tensor: The reduced tensor.
+    """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
+    if output is not NullTensor:
+        output = output._tensor
+    _tensor = Model.get_model().all_reduce_rsag(
+        input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+def all_reduce_allpair_packet(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    output: Tensor = NullTensor,
+    name: str = "",
+) -> Tensor:
+    """
+    All-pairs one-shot LL-packet all-reduce for SMALL messages, a port of
+    mscclpp's ``allreduceAllPairs`` (the NCCL-API <=16KB path). Standalone
+    grid-strided collective (its own processor group), so a grid barrier
+    separates it from a preceding producer.
+
+    Args:
+        input (Tensor): Input tensor to be reduced. Must be contiguous; its
+            element count must be divisible by (4 / dtype_bytes) = 2 for bf16.
+        rank (int): The rank of the current process.
+        world_size (int): The total number of processes.
+        output (Tensor, optional): The output tensor. Defaults to NullTensor.
+        name (str, optional): The name of the operation. Defaults to "".
+
+    Returns:
+        Tensor: The reduced tensor.
+    """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
+    if output is not NullTensor:
+        output = output._tensor
+    _tensor = Model.get_model().all_reduce_allpair_packet(
         input._tensor, rank, world_size, output, name
     )
     return Tensor(_tensor)

@@ -361,7 +361,9 @@ std::string Planner::Impl::plan(bool pretty) const {
             // ProcessorRange. default_config sets NumProcs = NumTasks,
             // but the planner may assign fewer processors.
             if (task_infos.back()["Ops"][0].at("Type") ==
-                "AllReducePacketFused") {
+                    "AllReducePacket" ||
+                task_infos.back()["Ops"][0].at("Type") ==
+                    "AllReduceAllpairPacket") {
                 auto &pr = resource_group["ProcessorRange"];
                 size_t pr_begin = pr[0].get<size_t>();
                 size_t pr_end = pr[1].get<size_t>();

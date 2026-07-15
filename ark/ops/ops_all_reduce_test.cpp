@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/executor.hpp"
+#include "gpu/gpu.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
@@ -48,8 +50,9 @@ void test_all_reduce_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
-ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
-                              int rank_num, int flag, ark::Tensor output) {
+ark::Tensor all_reduce_send_recv_packet(ark::Model &m, ark::Tensor input,
+                                        int rank, int rank_num, int flag,
+                                        ark::Tensor output) {
     int tag_send_reduce = m.unique_tag();
     int tag_output = m.unique_tag();
     if (output.is_null()) {
@@ -117,7 +120,7 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
 }
 
 template <int NumGpus>
-void test_all_reduce_packet_internal(ark::DimType nelem) {
+void test_all_reduce_send_recv_packet_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem]() {
             UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
@@ -126,12 +129,12 @@ void test_all_reduce_packet_internal(ark::DimType nelem) {
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
             ark::Tensor data = m.mul(ones, float(gpu_id + 1));
             ark::Tensor output =
-                all_reduce_packet(m, data, gpu_id, NumGpus, 1, data);
+                all_reduce_send_recv_packet(m, data, gpu_id, NumGpus, 1, data);
 
             std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
                                               ark::half_t(1.0f));
             auto result = ark::op_test(
-                "all_reduce_packet", m, {ones}, {output},
+                "all_reduce_send_recv_packet", m, {ones}, {output},
                 baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
@@ -310,15 +313,15 @@ ark::unittest::State test_all_reduce_8gpus() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_all_reduce_packet_4gpus() {
-    test_all_reduce_packet_internal<4>(2048);
-    test_all_reduce_packet_internal<4>(8192);
+ark::unittest::State test_all_reduce_send_recv_packet_4gpus() {
+    test_all_reduce_send_recv_packet_internal<4>(2048);
+    test_all_reduce_send_recv_packet_internal<4>(8192);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_all_reduce_packet_8gpus() {
-    test_all_reduce_packet_internal<8>(2048);
-    test_all_reduce_packet_internal<8>(8192);
+ark::unittest::State test_all_reduce_send_recv_packet_8gpus() {
+    test_all_reduce_send_recv_packet_internal<8>(2048);
+    test_all_reduce_send_recv_packet_internal<8>(8192);
     return ark::unittest::SUCCESS;
 }
 
@@ -334,11 +337,186 @@ ark::unittest::State test_all_reduce_sm_8gpus() {
     return ark::unittest::SUCCESS;
 }
 
+template <int NumGpus>
+void test_all_reduce_packet_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor ones = m.tensor({nelem}, ark::FP16);
+            ark::Tensor data = m.mul(ones, float(gpu_id + 1));
+            ark::Tensor data2d = m.reshape(data, {1, nelem});
+            ark::Tensor out2d =
+                m.all_reduce_packet(data2d, gpu_id, NumGpus);
+            ark::Tensor output = m.reshape(out2d, {nelem});
+
+            std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
+                                              ark::half_t(1.0f));
+            auto result = ark::op_test(
+                "all_reduce_packet", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+// Variant with external-buffer (placeholder) input — exercises staging the
+// external input into registered memory before the packet collective.
+// Cannot use op_test() because placeholders require pre-allocated GPU memory;
+// drive the executor manually instead.
+template <int NumGpus>
+void test_all_reduce_packet_ext_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+
+            UNITTEST_EQ(ark::gpuSetDevice(gpu_id), ark::gpuSuccess);
+
+            // Allocate GPU memory and fill with (gpu_id + 1).
+            ark::half_t *d_input = nullptr;
+            size_t nbytes = nelem * sizeof(ark::half_t);
+            UNITTEST_EQ(ark::gpuMalloc(&d_input, nbytes), ark::gpuSuccess);
+            std::vector<ark::half_t> h_input(nelem,
+                                             ark::half_t(float(gpu_id + 1)));
+            UNITTEST_EQ(ark::gpuMemcpy(d_input, h_input.data(), nbytes,
+                                       ark::gpuMemcpyHostToDevice),
+                        ark::gpuSuccess);
+
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor input =
+                m.placeholder({1, nelem}, ark::FP16, {}, {}, {}, -1, d_input);
+            ark::Tensor output =
+                m.all_reduce_packet(input, gpu_id, NumGpus);
+
+            ark::DefaultExecutor exe(m, gpu_id);
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+
+            std::vector<ark::half_t> h_output(nelem);
+            exe.tensor_read(output, h_output);
+
+            float expected = float(NumGpus * (NumGpus + 1)) / 2.0f;
+            for (ark::DimType i = 0; i < nelem; ++i) {
+                UNITTEST_EQ(float(h_output[i]), expected);
+            }
+
+            UNITTEST_EQ(ark::gpuFree(d_input), ark::gpuSuccess);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+ark::unittest::State test_all_reduce_packet_ext_2gpus() {
+    test_all_reduce_packet_ext_internal<2>(4096);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_packet_2gpus() {
+    test_all_reduce_packet_internal<2>(4096);
+    return ark::unittest::SUCCESS;
+}
+
+// ---------------------------------------------------------------------------
+// RSAG (reduce-scatter + all-gather) all-reduce.
+// ---------------------------------------------------------------------------
+
+// Internal-input correctness: reduce ones*(gpu_id+1) -> sum_{1..NumGpus}. The
+// reduction accumulates in fp32 and the summed small integers are exact in
+// fp16, so the result matches the baseline exactly. nelem must be divisible by
+// NumGpus * (16 / dtype_bytes) = NumGpus * 8 for fp16.
+template <int NumGpus>
+void test_all_reduce_rsag_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor ones = m.tensor({nelem}, ark::FP16);
+            ark::Tensor data = m.mul(ones, float(gpu_id + 1));
+            ark::Tensor output = m.all_reduce_rsag(data, gpu_id, NumGpus);
+
+            std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
+                                              ark::half_t(1.0f));
+            auto result = ark::op_test(
+                "all_reduce_rsag", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+// External-buffer (placeholder) input — exercises staging the external input
+// into registered memory before the collective (all_reduce_rsag copies an
+// external input into an internal tensor first). Driven manually like the
+// packet variant (placeholders need pre-allocated GPU memory).
+template <int NumGpus>
+void test_all_reduce_rsag_ext_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            UNITTEST_EQ(ark::gpuSetDevice(gpu_id), ark::gpuSuccess);
+
+            ark::half_t *d_input = nullptr;
+            size_t nbytes = nelem * sizeof(ark::half_t);
+            UNITTEST_EQ(ark::gpuMalloc(&d_input, nbytes), ark::gpuSuccess);
+            std::vector<ark::half_t> h_input(nelem,
+                                             ark::half_t(float(gpu_id + 1)));
+            UNITTEST_EQ(ark::gpuMemcpy(d_input, h_input.data(), nbytes,
+                                       ark::gpuMemcpyHostToDevice),
+                        ark::gpuSuccess);
+
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor input =
+                m.placeholder({nelem}, ark::FP16, {}, {}, {}, -1, d_input);
+            ark::Tensor output = m.all_reduce_rsag(input, gpu_id, NumGpus);
+
+            ark::DefaultExecutor exe(m, gpu_id);
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+
+            std::vector<ark::half_t> h_output(nelem);
+            exe.tensor_read(output, h_output);
+
+            float expected = float(NumGpus * (NumGpus + 1)) / 2.0f;
+            for (ark::DimType i = 0; i < nelem; ++i) {
+                UNITTEST_EQ(float(h_output[i]), expected);
+            }
+
+            UNITTEST_EQ(ark::gpuFree(d_input), ark::gpuSuccess);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+ark::unittest::State test_all_reduce_rsag_ext_2gpus() {
+    test_all_reduce_rsag_ext_internal<2>(4096);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_rsag_2gpus() {
+    test_all_reduce_rsag_internal<2>(4096);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
-    UNITTEST(test_all_reduce_packet_4gpus);
-    UNITTEST(test_all_reduce_packet_8gpus);
+    UNITTEST(test_all_reduce_send_recv_packet_4gpus);
+    UNITTEST(test_all_reduce_send_recv_packet_8gpus);
+    UNITTEST(test_all_reduce_packet_ext_2gpus);
+    UNITTEST(test_all_reduce_packet_2gpus);
+    UNITTEST(test_all_reduce_rsag_ext_2gpus);
+    UNITTEST(test_all_reduce_rsag_2gpus);
     UNITTEST(test_all_reduce_sm_4gpus);
     UNITTEST(test_all_reduce_sm_8gpus);
     UNITTEST(test_all_reduce_inplace_2gpus);

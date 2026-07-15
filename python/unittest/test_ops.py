@@ -221,6 +221,6 @@ def test_ops_transpose():
 @pytest_ark()
 def test_ops_all_reduce_packet():
     ark.set_world_size(2)
-    a = ark.tensor([1024], ark.fp16)
+    a = ark.tensor([16, 128], ark.fp16)
     b = ark.all_reduce_packet(a, rank=0, world_size=2)
-    assert b.shape() == [1024]
+    assert b.shape() == [16, 128]

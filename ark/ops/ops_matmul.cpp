@@ -3,6 +3,7 @@
 
 #include "ops_matmul.hpp"
 
+#include <cstdlib>
 #include <utility>
 
 #include "../model/model_tensor.hpp"
@@ -310,10 +311,52 @@ static const Json get_default_config(const ArchRef arch,
 Json ModelOpMatmul::default_config(const ArchRef arch) const {
     auto result = result_tensors_[0];
     check_fields_args(args_, {"TransposeInput", "TransposeOther"});
+    bool trans_input = args_.at("TransposeInput").value<bool>();
+    bool trans_other = args_.at("TransposeOther").value<bool>();
     Dims mnk = calc_problem_size(read_tensors_[0]->padded_shape(),
-                                 read_tensors_[1]->padded_shape(),
-                                 args_.at("TransposeInput").value<bool>(),
-                                 args_.at("TransposeOther").value<bool>());
+                                 read_tensors_[1]->padded_shape(), trans_input,
+                                 trans_other);
+    // M==1 GEMV fast path (linear-layer layout: !trans_input && trans_other).
+    // Tile [1, TN] (TileSizeM==1) routes matmul.h to the custom `gemv` kernel,
+    // which computes exactly one output row (no CUTLASS M=1->64 padding waste).
+    // TN chosen to divide N so column tiles are full; NumWarps=8 (one warp per
+    // column, lanes split K). Only for fp16/bf16 with K a multiple of 8.
+    if (arch->belongs_to(ARCH_CUDA) && mnk[0] == 1 && !trans_input &&
+        trans_other && (mnk[2] % 8 == 0) &&
+        (result->data_type() == FP16.ref() ||
+         result->data_type() == BF16.ref())) {
+        DimType N = mnk[1];
+        // The GEMV is memory-bound on the weight B (read once). Parallelism =
+        // NumProcs (=N/TN) * NumWarps concurrent warps issuing coalesced loads;
+        // too few blocks under-fill the SMs (N/64 = 48 blocks for gate_up leaves
+        // ~half the A100 idle). Pick a SMALL column tile so N/TN >> num_sm,
+        // saturating HBM. TN and NumWarps are env-tunable for sweeping; the baked
+        // default TN=8 gives one warp per output column (the canonical GEMV) and
+        // N/8 blocks. TN must divide N and be a multiple of the packet-free GEMV
+        // granularity (any power of two here); NumWarps>=1.
+        DimType tn = 8;
+        if (const char *e = std::getenv("ARK_GEMV_TN")) {
+            DimType v = static_cast<DimType>(std::atoi(e));
+            if (v >= 1 && N % v == 0) tn = v;
+        } else {
+            // A small column tile maximizes blocks (memory parallelism). TN=16
+            // measured fastest for the decode gate_up (N=3072) and down (N=4096)
+            // GEMVs on A100 (2.0-2.3 TB/s vs 1.4 for TN=64); prefer it, then
+            // fall back to other small divisors.
+            for (DimType c : {16, 8, 32, 64}) {
+                if (N % c == 0) {
+                    tn = c;
+                    break;
+                }
+            }
+        }
+        int num_warps = 8;
+        if (const char *e = std::getenv("ARK_GEMV_WARPS")) {
+            int v = std::atoi(e);
+            if (v >= 1 && v <= 32) num_warps = v;
+        }
+        return {{"NumWarps", num_warps}, {"SramBytes", 0}, {"Tile", {1, tn}}};
+    }
     return get_default_config(arch, result->data_type(), mnk);
 }
 

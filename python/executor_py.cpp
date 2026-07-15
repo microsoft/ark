@@ -25,9 +25,9 @@ static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
 
 static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
                          size_t address, size_t bytes, uintptr_t stream,
-                         bool is_d2d) {
+                         bool is_d2d, bool async) {
     exe->tensor_write(tensor, reinterpret_cast<void *>(address), bytes,
-                      reinterpret_cast<ark::Stream>(stream), is_d2d);
+                      reinterpret_cast<ark::Stream>(stream), is_d2d, async);
 }
 
 static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
@@ -247,8 +247,8 @@ void register_executor(py::module &m) {
              py::arg("tensor"), py::arg("data"), py::arg("stream"))
         .def("tensor_write",
              py::overload_cast<ark::Executor *, const ark::Tensor &, size_t,
-                               size_t, uintptr_t, bool>(&tensor_write),
+                               size_t, uintptr_t, bool, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
-             py::arg("stream"), py::arg("is_d2d"))
+             py::arg("stream"), py::arg("is_d2d"), py::arg("async") = false)
         .def("tensor_to_dlpack", &tensor_to_dlpack);
 }

@@ -3,6 +3,7 @@
 
 #include "ark/executor.hpp"
 
+#include <atomic>
 #include <cmath>
 #include <list>
 #include <memory>
@@ -183,9 +184,17 @@ class CommResource {
 
 CommResource::CommResource(int device_id, int rank, int world_size)
     : device_id_(device_id), rank_(rank), world_size_(world_size) {
+    // Each CommResource owns its own mscclpp bootstrap rendezvous. A single
+    // process may launch several executors with comm ops (e.g. separate prefill
+    // and decode plans); if they all bootstrapped on the same port the second
+    // rendezvous would time out. All ranks construct their CommResources in the
+    // same (lockstep) order, so a static instance counter yields a matching,
+    // unique port on every rank, letting the executors coexist.
+    static std::atomic<int> comm_instance{0};
+    int port = get_env().mscclpp_port + comm_instance.fetch_add(1);
     auto bootstrap = std::make_shared<mscclpp::TcpBootstrap>(rank, world_size);
     std::stringstream ip_port;
-    ip_port << get_host(0) << ":" << get_env().mscclpp_port;
+    ip_port << get_host(0) << ":" << port;
     bootstrap->initialize(ip_port.str());
     comm_ = std::make_shared<mscclpp::Communicator>(bootstrap);
     proxy_service_ = std::make_shared<mscclpp::ProxyService>();
@@ -833,7 +842,7 @@ class Executor::Impl {
     void tensor_read(const Tensor &tensor, void *data, size_t bytes,
                      Stream stream, bool is_d2d) const;
     void tensor_write(const Tensor &tensor, const void *data, size_t bytes,
-                      Stream stream, bool is_d2d) const;
+                      Stream stream, bool is_d2d, bool async) const;
 
    protected:
     friend class DefaultExecutor;
@@ -1111,8 +1120,8 @@ void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
 }
 
 void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
-                                  size_t bytes, Stream stream,
-                                  bool is_d2d) const {
+                                  size_t bytes, Stream stream, bool is_d2d,
+                                  bool async) const {
     auto info = get_buffer_info(tensor, true);
     size_t device_id = info->device_id;
     GLOG(gpuSetDevice(device_id));
@@ -1163,6 +1172,12 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
         }
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_bytes,
                             gpuMemcpyHostToDevice, copy_stream_raw));
+    }
+    // In async mode the caller owns stream ordering (e.g. CUDA graph capture),
+    // so skip the host-side sync that would abort capture. Only valid for the
+    // contiguous fast path, which issues a single async memcpy above.
+    if (async && tensor.strides() == tensor.shape() && stream) {
+        return;
     }
     GLOG(gpuStreamSynchronize(copy_stream_raw));
 }
@@ -1219,8 +1234,9 @@ void Executor::tensor_read(const Tensor &tensor, void *data, size_t bytes,
 }
 
 void Executor::tensor_write(const Tensor &tensor, const void *data,
-                            size_t bytes, Stream stream, bool is_d2d) const {
-    impl_->tensor_write(tensor, data, bytes, stream, is_d2d);
+                            size_t bytes, Stream stream, bool is_d2d,
+                            bool async) const {
+    impl_->tensor_write(tensor, data, bytes, stream, is_d2d, async);
 }
 
 DefaultExecutor::DefaultExecutor(

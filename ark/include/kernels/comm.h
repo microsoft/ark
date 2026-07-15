@@ -4,6 +4,7 @@
 #ifndef ARK_KERNELS_COMM_H_
 #define ARK_KERNELS_COMM_H_
 
+#include <mscclpp/concurrency_device.hpp>
 #include <mscclpp/memory_channel_device.hpp>
 #include <mscclpp/packet_device.hpp>
 #include <mscclpp/port_channel_device.hpp>
@@ -11,6 +12,7 @@
 #include "common/atomic.h"
 #include "common/broadcast.h"
 #include "common/fp16.h"
+#include "common/type_intrinsics.h"
 #include "common/unit_op.h"
 #include "reduce.h"
 
@@ -18,6 +20,34 @@ extern __constant__ mscclpp::PortChannelDeviceHandle ARK_PROXY_CHANS[];
 extern __constant__ mscclpp::PortChannelDeviceHandle
     ARK_PROXY_SECONDARY_CHANS[];
 extern __constant__ mscclpp::MemoryChannelDeviceHandle ARK_SM_CHANS[];
+
+// Device-wide barrier shared by the read-based all-reduce kernel. Reused across
+// launches (self-resetting via 3 rotating counters); zero-initialized.
+__device__ mscclpp::DeviceSyncer ARK_ALLREDUCE_SYNCER;
+
+// Monotonic sequence number for the RSAG cross-rank (flag) barrier. Incremented
+// once per barrier per rank by block 0's thread 0; all ranks advance it in
+// lockstep so a given barrier uses the same value everywhere. Zero-initialized
+// at module load, so the first barrier value is 1 and a zero-filled flag slot
+// never false-matches.
+__device__ uint32_t ARK_RSAG_BARRIER_SEQ;
+
+// Per-block monotonically incrementing flag for the one-shot packet all-reduce
+// (mscclpp LL protocol). Persists across rt.run() launches; zero-initialized at
+// module load, so the first flag used is 1 and a zero-filled scratch never
+// false-matches a valid packet. Sized for the max blocks any all-reduce plan
+// uses (default_config caps NumTasks well below this).
+#ifndef ARK_AR_MAX_BLOCKS
+#define ARK_AR_MAX_BLOCKS 512
+#endif
+__device__ uint32_t ARK_AR_ONESHOT_FLAGS[ARK_AR_MAX_BLOCKS];
+
+// Per-block monotonically incrementing flag for the all-pairs packet all-reduce
+// (a port of mscclpp's `allreduceAllPairs`, the NCCL-API small-message path).
+// Separate from the one-shot flags so the two packet kernels never share flag
+// slots. Zero-initialized at module load, so the first flag used is 1 and a
+// zero-filled scratch never false-matches a valid packet.
+__device__ uint32_t ARK_AR_ALLPAIR_FLAGS[ARK_AR_MAX_BLOCKS];
 
 namespace ark {
 namespace comm {
@@ -437,134 +467,384 @@ DEVICE void device_sync(int, int) {
     }
 }
 
-// Fused intra-node packet allreduce, mirroring mscclpp's `allreducePacket`
-// kernel (`src/ext/collectives/allreduce/allreduce_packet.cu`). The three
-// phases (scatter → reduce → broadcast) live in a single device function;
-// inter-phase synchronization is provided by the LL packet flag itself
-// (writer sets data+flag, reader spins on flag), so no cross-block barrier
-// is needed.
+// Tile-local one-shot LL16-packet all-reduce (the only packet all-reduce
+// kernel). Block `uop_idx` reduces ONLY its own [TileRows, TileCols]
+// column-tile of the [Rows, Cols] output — the SAME tile a fused preceding
+// matmul wrote on this block. The matmul→AR handoff is therefore intra-block: a
+// cheap warp-group barrier (UnitOp::sync_threads) instead of a grid barrier, and
+// each tile's NVLink exchange overlaps other tiles' matmul compute. Cross-rank
+// ordering is carried by the per-packet LL flag; the scratch is a
+// 2*WorldSize*NPkts double-buffer indexed by full-array packet position, so
+// every rank's block-for-tile-t writes/reads identical scratch slots. A tile
+// grid covering the whole tensor gives the plain one-shot all-reduce behavior.
 //
-// Template parameters:
-//   NPeers     — world_size - 1; this rank's peer count
-//   Rank       — this rank's world index [0, NPeers]
-//   NumProcs   — number of blocks the planner gave this op
-//                (= (ProcEnd - ProcBegin) / ProcStep, supplied at codegen)
-//   NumWarps   — warps per block
-//   PacketType — `mscclpp::LL16Packet` (only LL16 supported initially;
-//                Payload = uint2 = 4 fp16 elements per packet)
-//   DataType   — element type (only fp16 supported initially)
-//   NelemsTotal — total elements in the input tensor (compile-time, from
-//                 shape)
-//   Flag       — compile-time flag value used by the LL packet protocol
-//                (per-iter flag rotation is deferred work)
-//
-// Runtime arguments:
-//   output / input / scratch  — base pointers
-//   scratch_offset_remote     — offset (in bytes) of the scratch tensor
-//                               within ALL ranks' device buffers; since
-//                               internal-buffer allocation is symmetric
-//                               for symmetric collectives, peers' scratch
-//                               is at the same local offset as ours
-//   input_offset              — offset (in bytes) of the input tensor
-//                               within its device buffer
-//   task_id                   — block-relative index in [0, NumProcs)
-//
-// Block-to-peer mapping requirement (initial implementation):
-//   NumProcs >= NPeers AND NumProcs % NPeers == 0
+//   Rows, Cols         — output shape (compile-time).
+//   TileRows, TileCols — column-tile shape matching the fused matmul's
+//                        UnitOutDims. TileCols must divide Cols and be a
+//                        multiple of ElemsPerPkt (= 8 / dtype_bytes = 4).
 template <int NPeers, int Rank, int NumProcs, int NumWarps, typename PacketType,
-          typename DataType, int NelemsTotal, uint32_t Flag = 1>
-DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
-                                   void *scratch,
-                                   uint64_t scratch_offset_remote,
-                                   uint64_t input_offset, int task_id,
-                                   int /*sram_per_warp*/) {
-    using Payload = typename PacketType::Payload;
+          typename DataType, int Rows, int Cols, int TileRows, int TileCols>
+DEVICE void allreduce_packet(DataType *output, DataType *input,
+                             DataType *scratch, uint64_t scratch_offset,
+                             int uop_idx, int /*sram_per_warp*/) {
     static_assert(NPeers >= 1, "Need at least one peer");
-    static_assert(NumProcs >= NPeers && (NumProcs % NPeers) == 0,
-                  "Initial port requires NumProcs >= NPeers and divisible");
-    static_assert(std::is_same<Payload, uint2>::value,
-                  "Only LL16Packet (Payload=uint2) supported initially");
-    static_assert(sizeof(DataType) <= sizeof(uint32_t),
-                  "DataType must be <= 4 bytes");
-
-    constexpr int NThreadsPerBlock = NumWarps * 32;
+    static_assert(sizeof(DataType) == 2,
+                  "packet allreduce supports 2-byte types (fp16/bf16)");
     constexpr int WorldSize = NPeers + 1;
-    constexpr int ElemsPerUint32 = sizeof(uint32_t) / sizeof(DataType);
-    static_assert(
-        NelemsTotal % (ElemsPerUint32 * 2 * WorldSize) == 0,
-        "NelemsTotal must be divisible by WorldSize * 2 * ElemsPerUint32");
-    constexpr int NelemsInt32 = NelemsTotal / ElemsPerUint32;
-    constexpr int NPkts = NelemsInt32 / 2;
-    constexpr int NelemsPerRank = NelemsInt32 / WorldSize;
-    constexpr int NPktsPerRank = NelemsPerRank / 2;
-    constexpr int NBlocksPerPeer = NumProcs / NPeers;
-    constexpr int NelemsPerPacket = sizeof(Payload) / sizeof(DataType);
+    using Payload = typename PacketType::Payload;                    // uint2 (8B)
+    constexpr int ElemsPerPkt = sizeof(Payload) / sizeof(DataType);  // 4 (bf16)
+    static_assert(TileCols % ElemsPerPkt == 0,
+                  "TileCols must be divisible by ElemsPerPkt");
+    static_assert(Cols % ElemsPerPkt == 0,
+                  "Cols must be divisible by ElemsPerPkt");
+    static_assert(Cols % TileCols == 0, "TileCols must divide Cols");
+    constexpr int PktsPerRow = Cols / ElemsPerPkt;          // full-row packets
+    constexpr int TilePktsPerRow = TileCols / ElemsPerPkt;  // tile-row packets
+    constexpr int NColTiles = Cols / TileCols;
+    constexpr int NPkts = Rows * PktsPerRow;                // full-array packets
+    constexpr uint64_t HalfPkts = static_cast<uint64_t>(WorldSize) * NPkts;
 
-    const int peer_idx = task_id / NBlocksPerPeer;
-    const int local_block_idx = task_id % NBlocksPerPeer;
-    const int remote_rank = peer_idx < Rank ? peer_idx : peer_idx + 1;
-    const int peer_tid = threadIdx.x + local_block_idx * NThreadsPerBlock;
-    constexpr int peer_total_threads = NThreadsPerBlock * NBlocksPerPeer;
-    constexpr uint64_t SCRATCH_INPUT_BYTES = NPkts * sizeof(PacketType);
+    // This block's column-tile — matches the fused matmul's uop_idx layout
+    // (col-major within a row-tile; one row-tile when Rows <= TileRows, which
+    // holds for the T<=64 down_proj prefill shape).
+    const int col_tile = uop_idx % NColTiles;
+    const int row_tile = uop_idx / NColTiles;
+    const int col_pkt0 = col_tile * TilePktsPerRow;
+    const int row0 = row_tile * TileRows;
+    const int row1 = (row0 + TileRows < Rows) ? (row0 + TileRows) : Rows;
+    const int tile_rows = (row1 > row0) ? (row1 - row0) : 0;
+    const int tile_pkts = tile_rows * TilePktsPerRow;
 
-    // ----- Phase 1: putPackets to peer's scratch[Rank slot] -----
-    if (task_id < NumProcs) {
-        auto &chan = ARK_SM_CHANS[remote_rank];
-        uint64_t dst_off =
-            scratch_offset_remote + Rank * NPktsPerRank * sizeof(PacketType);
-        uint64_t src_off =
-            input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
-        chan.template putPackets<PacketType>(
-            dst_off, src_off, NelemsPerRank * sizeof(uint32_t), peer_tid,
-            peer_total_threads, Flag);
-    }
+    // Order this block's matmul tile writes (to `input` in HBM) before the
+    // block's own AR reads below, using the op's warp-group barrier. NumWarps
+    // MUST equal the fused matmul's NumWarps so the block holds exactly that
+    // many warps and the named barrier is used consistently across the two ops
+    // (a wider AR barrier would collide with the matmul's still-in-flight
+    // warp-group barrier -> illegal instruction). barrier.sync also makes the
+    // block's global writes visible across the group, so no __threadfence is
+    // needed. Intra-block only — no grid barrier.
+    using Uop = UnitOp<Vec<>, Vec<>, Vec<>, NumWarps, 0>;
+    Uop::sync_threads();
 
-    // ----- Phase 2: reduce local rank's shard, scatter result to peers -----
-    {
-        PacketType *scratch_input = reinterpret_cast<PacketType *>(scratch);
-        uint2 *src = reinterpret_cast<uint2 *>(input) + Rank * NPktsPerRank;
-        uint2 *dst = reinterpret_cast<uint2 *>(output) + Rank * NPktsPerRank;
+    const int tid = Uop::thread_id();       // warp-group-local thread index
+    const int nThreads = Uop::NumThreads;   // = NumWarps * ThreadsPerWarp
+    const uint32_t flag = ARK_AR_ONESHOT_FLAGS[blockIdx.x] + 1u;
+    const uint64_t half_off = static_cast<uint64_t>(flag & 1u) * HalfPkts;
 
-        for (int idx = threadIdx.x + task_id * NThreadsPerBlock;
-             idx < NPktsPerRank; idx += NThreadsPerBlock * NumProcs) {
-            uint2 data = src[idx];
+    Payload *in_pl = reinterpret_cast<Payload *>(input);
+    Payload *out_pl = reinterpret_cast<Payload *>(output);
+    PacketType *local_scratch =
+        reinterpret_cast<PacketType *>(scratch) + half_off;
+
+    using D2 = typename std::conditional<std::is_same<DataType, fp16>::value,
+                                         fp16x2, bf16x2>::type;
+
+    // ----- step 1: write my tile's packets into every peer's scratch slot
+    //       [Rank] (at the packets' natural full-array positions).
+    for (int t = tid; t < tile_pkts; t += nThreads) {
+        const int r = t / TilePktsPerRow;
+        const int cp = t % TilePktsPerRow;
+        const int idx = (row0 + r) * PktsPerRow + col_pkt0 + cp;
+        Payload val = in_pl[idx];
 #pragma unroll
-            for (int i = 0; i < NPeers; ++i) {
-                int peer_rank = i < Rank ? i : i + 1;
-                PacketType *pkt =
-                    scratch_input + peer_rank * NPktsPerRank + idx;
-                uint2 val = pkt->read(Flag, -1);
-                ReduceTypeSum::template reduce<NelemsPerPacket, DataType>(
-                    reinterpret_cast<DataType *>(&data),
-                    reinterpret_cast<DataType *>(&data),
-                    reinterpret_cast<DataType *>(&val));
-            }
-            dst[idx] = data;
-#pragma unroll
-            for (int i = 0; i < NPeers; ++i) {
-                int peer_rank = i < Rank ? i : i + 1;
-                auto &chan = ARK_SM_CHANS[peer_rank];
-                char *remote_base = reinterpret_cast<char *>(chan.dst_);
-                PacketType *remote_pkt = reinterpret_cast<PacketType *>(
-                    remote_base + scratch_offset_remote + SCRATCH_INPUT_BYTES +
-                    Rank * NPktsPerRank * sizeof(PacketType));
-                (remote_pkt + idx)->write(data, Flag);
-            }
+        for (int i = 0; i < NPeers; ++i) {
+            const int rr = (i < Rank) ? i : i + 1;
+            PacketType *peer_scratch = reinterpret_cast<PacketType *>(
+                reinterpret_cast<char *>(ARK_SM_CHANS[rr].dst_) +
+                scratch_offset);
+            (peer_scratch + half_off + static_cast<uint64_t>(Rank) * NPkts + idx)
+                ->write(val, flag);
         }
     }
 
-    // ----- Phase 3: read result packets for this peer's shard -----
-    if (task_id < NumProcs) {
-        PacketType *result_base = reinterpret_cast<PacketType *>(
-            reinterpret_cast<char *>(scratch) + SCRATCH_INPUT_BYTES +
-            remote_rank * NPktsPerRank * sizeof(PacketType));
-        uint2 *dst =
-            reinterpret_cast<uint2 *>(output) + remote_rank * NPktsPerRank;
-        for (int idx = peer_tid; idx < NPktsPerRank;
-             idx += peer_total_threads) {
-            dst[idx] = result_base[idx].read(Flag, -1);
+    // ----- step 2: reduce my tile's local input + every peer's packet (fp32)
+    //       -> output tile.
+    for (int t = tid; t < tile_pkts; t += nThreads) {
+        const int r = t / TilePktsPerRow;
+        const int cp = t % TilePktsPerRow;
+        const int idx = (row0 + r) * PktsPerRow + col_pkt0 + cp;
+        Payload mine = in_pl[idx];
+        D2 *mp = reinterpret_cast<D2 *>(&mine);
+        float2 a0 = type::Cast::compute<float2>(mp[0]);
+        float2 a1 = type::Cast::compute<float2>(mp[1]);
+#pragma unroll
+        for (int i = 0; i < NPeers; ++i) {
+            const int rr = (i < Rank) ? i : i + 1;
+            Payload v =
+                (local_scratch + static_cast<uint64_t>(rr) * NPkts + idx)
+                    ->read(flag, -1);
+            D2 *vp = reinterpret_cast<D2 *>(&v);
+            float2 f0 = type::Cast::compute<float2>(vp[0]);
+            float2 f1 = type::Cast::compute<float2>(vp[1]);
+            a0.x += f0.x; a0.y += f0.y;
+            a1.x += f1.x; a1.y += f1.y;
+        }
+        Payload outv;
+        D2 *op = reinterpret_cast<D2 *>(&outv);
+        op[0] = type::Cast::compute<D2>(a0);
+        op[1] = type::Cast::compute<D2>(a1);
+        out_pl[idx] = outv;
+    }
+
+    if (threadIdx.x == 0) {
+        ARK_AR_ONESHOT_FLAGS[blockIdx.x] = flag;
+    }
+}
+
+// All-pairs one-shot LL-packet all-reduce, a direct port of mscclpp's
+// `allreduceAllPairs` (the NCCL-API small-message path, message size <= 16 KB).
+// Standalone grid op (its own processor group): every block owns a grid-strided
+// stripe of the whole [Nelems] array (NOT a tile), exactly like mscclpp's
+// 28-block / 512-thread launch. Phase 1 -- one warp per peer writes this block's
+// stripe as LL packets into that peer's scratch slot [Rank]. Phase 2 -- all
+// warps reduce their share of the stripe (local input + every peer's packet,
+// fp32 accum) into the output. No intra-block barrier is needed because the AR
+// is out-of-place (output is a distinct buffer from input, as the free function
+// always allocates): phase 1 writes only to peers' scratch, phase 2 reads only
+// local input + peers' packets (cross-rank ordering carried by the per-packet LL
+// flag) and writes only the distinct output. The scratch is a 2*WorldSize*NPkts
+// double buffer indexed by flag parity. NumBlocks = the op's NumProcs (the
+// planner overrides it to the actual processor count; see planner.cpp).
+template <int NPeers, int Rank, int NumWarps, typename PacketType,
+          typename DataType, int Nelems, int NumBlocks>
+DEVICE void allreduce_allpair_packet(DataType *output, DataType *input,
+                                     DataType *scratch, uint64_t scratch_offset,
+                                     int /*uop_idx*/, int /*sram_per_warp*/) {
+    static_assert(NPeers >= 1, "Need at least one peer");
+    static_assert(sizeof(DataType) == 2,
+                  "packet allreduce supports 2-byte types (fp16/bf16)");
+    static_assert(NumWarps > NPeers,
+                  "allpair packet needs at least one warp per peer");
+    constexpr int WorldSize = NPeers + 1;
+    using Payload = typename PacketType::Payload;  // uint32 (LL8) / uint2 (LL16)
+    constexpr int ElemsPerPkt = sizeof(Payload) / sizeof(DataType);  // 2 or 4
+    static_assert(Nelems % ElemsPerPkt == 0,
+                  "Nelems must be divisible by ElemsPerPkt");
+    constexpr int NPkts = Nelems / ElemsPerPkt;  // whole-array packet count
+    constexpr int NPairs = ElemsPerPkt / 2;      // bf16x2 lanes per packet (1/2)
+    constexpr uint64_t HalfPkts = static_cast<uint64_t>(WorldSize) * NPkts;
+
+    const int bid = blockIdx.x;
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    const int gstride = NumBlocks * 32;  // grid-wide warp stride (in packets)
+
+    const uint32_t flag = ARK_AR_ALLPAIR_FLAGS[bid] + 1u;
+    const uint64_t half_off = static_cast<uint64_t>(flag & 1u) * HalfPkts;
+
+    Payload *in_pl = reinterpret_cast<Payload *>(input);
+    Payload *out_pl = reinterpret_cast<Payload *>(output);
+    PacketType *local_scratch =
+        reinterpret_cast<PacketType *>(scratch) + half_off;
+
+    using D2 = typename std::conditional<std::is_same<DataType, fp16>::value,
+                                         fp16x2, bf16x2>::type;
+
+    // ----- phase 1: one warp per peer writes this block's grid-strided stripe
+    //       into that peer's scratch slot [Rank].
+    if (warp < NPeers) {
+        const int rr = (warp < Rank) ? warp : warp + 1;
+        PacketType *peer_scratch = reinterpret_cast<PacketType *>(
+            reinterpret_cast<char *>(ARK_SM_CHANS[rr].dst_) + scratch_offset);
+        PacketType *peer_slot =
+            peer_scratch + half_off + static_cast<uint64_t>(Rank) * NPkts;
+        for (int idx = lane + bid * 32; idx < NPkts; idx += gstride) {
+            (peer_slot + idx)->write(in_pl[idx], flag);
         }
     }
+
+    // ----- phase 2: reduce this block's stripe (all warps split it). Each
+    //       output packet = local input + every peer's packet, fp32 accum.
+    for (int idx = lane + bid * 32 + warp * gstride; idx < NPkts;
+         idx += NumWarps * gstride) {
+        Payload mine = in_pl[idx];
+        D2 *mp = reinterpret_cast<D2 *>(&mine);
+        float2 acc[NPairs];
+#pragma unroll
+        for (int j = 0; j < NPairs; ++j) {
+            acc[j] = type::Cast::compute<float2>(mp[j]);
+        }
+#pragma unroll
+        for (int i = 0; i < NPeers; ++i) {
+            const int rr = (i < Rank) ? i : i + 1;
+            Payload v =
+                (local_scratch + static_cast<uint64_t>(rr) * NPkts + idx)
+                    ->read(flag, -1);
+            D2 *vp = reinterpret_cast<D2 *>(&v);
+#pragma unroll
+            for (int j = 0; j < NPairs; ++j) {
+                float2 f = type::Cast::compute<float2>(vp[j]);
+                acc[j].x += f.x;
+                acc[j].y += f.y;
+            }
+        }
+        Payload outv;
+        D2 *op = reinterpret_cast<D2 *>(&outv);
+#pragma unroll
+        for (int j = 0; j < NPairs; ++j) {
+            op[j] = type::Cast::compute<D2>(acc[j]);
+        }
+        out_pl[idx] = outv;
+    }
+
+    if (tid == 0) {
+        ARK_AR_ALLPAIR_FLAGS[bid] = flag;
+    }
+}
+
+// Read-based Reduce-Scatter + All-Gather all-reduce for LARGE messages.
+// Bandwidth-optimal (O(N) inter-GPU traffic, int4-coalesced) vs the one-shot
+// packet AR's O(N*peers). Mirrors mscclpp's allreduce_rsag. Three phases, each
+// separated by a grid-wide (ARK_ALLREDUCE_SYNCER) + cross-rank barrier:
+//   1. scatter:        copy my input -> my (peer-visible) scratch.
+//   2. reduce-scatter: reduce ONLY my 1/WorldSize chunk from every peer's
+//      scratch, push the reduced chunk to every peer's scratch + my output.
+//   3. all-gather:     copy peers' reduced chunks from my scratch -> my output.
+// The reduced chunk is accumulated in fp32 (bf16x2/fp16x2 -> float2).
+// Requires Nelems % (WorldSize * ElemsPerInt4) == 0 (holds for [T, H] with H a
+// multiple of 64 on 8 ranks), so there is no partial-chunk/remainder handling.
+// The op is dispatched to processor blocks [0, NumBlocks), one uop (block)
+// each, so blockIdx.x is the block's 0-based index and ARK_ALLREDUCE_SYNCER
+// .sync(NumBlocks) scopes exactly the participating blocks. NumBlocks is the
+// op's NumProcs (NOT gridDim.x, which is sized to the max across all ops).
+//
+// WRITE-BASED (push) reduce-scatter + all-gather, mirroring mscclpp
+// allreduce_fullmesh (the A100/no-NVLS large-message path). All cross-GPU
+// traffic is REMOTE WRITES (channel.write); all reads are LOCAL. Measured at
+// NVLink NCCL-parity for 16-33MB (~158 GB/s busbw on 8xA100 NVSwitch). Steps:
+//   1. Push: for each peer, write my contribution to that peer's chunk into the
+//      peer's scratch at my rank's slot (remote write).
+//   2. Reduce: my chunk = my local input + every peer's contribution read from
+//      MY scratch (local reads), reduced in fp32; write to my output and push
+//      to every peer's output (remote write) -- the all-gather.
+// The scratch holds WorldSize*nInt4PerRank int4 (== Nelems elems) of received
+// contributions, followed by the WorldSize-slot uint32 flag region.
+template <int NPeers, int Rank, int NumWarps, typename DataType, int Nelems,
+          int NumBlocks>
+DEVICE void allreduce_rsag(DataType *output, DataType *input, DataType *scratch,
+                           uint64_t output_offset, uint64_t scratch_offset,
+                           int /*uop_idx*/, int /*sram_per_warp*/) {
+    static_assert(sizeof(DataType) == 2,
+                  "rsag allreduce supports 2-byte types (fp16/bf16)");
+    constexpr int WorldSize = NPeers + 1;
+    constexpr int ElemsPerInt4 = sizeof(int4) / sizeof(DataType);  // 8 (bf16)
+    static_assert(Nelems % (WorldSize * ElemsPerInt4) == 0,
+                  "Nelems must be divisible by WorldSize * ElemsPerInt4");
+    constexpr int nInt4Total = Nelems / ElemsPerInt4;
+    constexpr int nInt4PerRank = nInt4Total / WorldSize;
+    // Flag region: WorldSize uint32 slots just past the data.
+    constexpr uint64_t flag_byte_off =
+        static_cast<uint64_t>(Nelems) * sizeof(DataType);
+
+    constexpr int nBlocks = NumBlocks;
+    const int bid = blockIdx.x;
+    const int tid = threadIdx.x;
+    const int nThreads = blockDim.x;
+
+    int4 *in4 = reinterpret_cast<int4 *>(input);
+    int4 *out4 = reinterpret_cast<int4 *>(output);
+    int4 *scr4 = reinterpret_cast<int4 *>(scratch);
+    uint32_t *my_flags = reinterpret_cast<uint32_t *>(
+        reinterpret_cast<char *>(scratch) + flag_byte_off);
+
+    // This block's contiguous slice within a chunk (load-balanced).
+    int per = nInt4PerRank / nBlocks;
+    int rem = nInt4PerRank % nBlocks;
+    int off4 = bid * per + (bid < rem ? bid : rem);
+    if (bid < rem) per += 1;
+
+    using D2 = typename std::conditional<std::is_same<DataType, fp16>::value,
+                                         fp16x2, bf16x2>::type;
+
+    // Grid-wide + cross-rank barrier. All blocks call the two grid syncs; block
+    // 0 (threads 0..NPeers-1) does the flag exchange in between: publish my
+    // writes, write seq to peer rr's flag[Rank], then spin until my flag[rr]
+    // reaches seq. Monotonic seq avoids stale matches; fences order data writes
+    // before the flag. seq is warp-shuffle broadcast (no static shared memory).
+    auto barrier = [&]() {
+        ARK_ALLREDUCE_SYNCER.sync(nBlocks);
+        if (bid == 0) {
+            uint32_t seq = 0;
+            if (tid == 0) {
+                seq = atomicAdd(&ARK_RSAG_BARRIER_SEQ, 1u) + 1u;
+            }
+            if (tid < 32) {
+                seq = __shfl_sync(0xffffffffu, seq, 0);
+            }
+            if (tid < NPeers) {
+                int rr = (tid < Rank) ? tid : tid + 1;
+                __threadfence_system();
+                uint32_t *peer_flags = reinterpret_cast<uint32_t *>(
+                    reinterpret_cast<char *>(ARK_SM_CHANS[rr].dst_) +
+                    scratch_offset + flag_byte_off);
+                peer_flags[Rank] = seq;
+                __threadfence_system();
+                volatile uint32_t *mf = my_flags;
+                while (mf[rr] != seq) {
+                }
+            }
+            __threadfence_system();
+        }
+        ARK_ALLREDUCE_SYNCER.sync(nBlocks);
+    };
+
+    // Barrier 1: every rank's input buffer is fully computed and visible.
+    barrier();
+
+    // Step 1 -- push: write my contribution to every peer's chunk into that
+    // peer's scratch at MY rank's slot. Remote WRITE (fire-and-forget). The
+    // peer order is staggered by blockIdx.x ((p+bid)%NPeers) so different blocks
+    // target different peers concurrently (mirrors fullmesh; spreads writes over
+    // the NVLink links). NOTE: the stagger was not itself the bottleneck -- an
+    // earlier apparent ~30 GB/s cap was a benchmark artifact (a per-call input-
+    // staging copy from a placeholder input, not present with an internal input).
+    for (int p = 0; p < NPeers; ++p) {
+        int pp = (p + bid) % NPeers;
+        int rr = (pp < Rank) ? pp : pp + 1;
+        int4 *peer_scr = reinterpret_cast<int4 *>(
+            reinterpret_cast<char *>(ARK_SM_CHANS[rr].dst_) + scratch_offset);
+        int src_base = rr * nInt4PerRank + off4;    // my data for peer rr's chunk
+        int dst_base = Rank * nInt4PerRank + off4;  // peer rr's scratch slot Rank
+        for (int i = tid; i < per; i += nThreads) {
+            peer_scr[dst_base + i] = in4[src_base + i];
+        }
+    }
+    barrier();
+
+    // Step 2 -- reduce my chunk locally, then push the result to peers.
+    int mybase = Rank * nInt4PerRank + off4;
+    for (int i = tid; i < per; i += nThreads) {
+        int oi = mybase + i;
+        int4 acc = in4[oi];  // my own contribution
+        D2 *a = reinterpret_cast<D2 *>(&acc);
+#pragma unroll
+        for (int p = 0; p < NPeers; ++p) {
+            int rr = (p < Rank) ? p : p + 1;
+            int4 val = scr4[rr * nInt4PerRank + off4 + i];  // LOCAL read
+            D2 *b = reinterpret_cast<D2 *>(&val);
+#pragma unroll
+            for (int k = 0; k < 4; ++k) {
+                float2 fa = type::Cast::compute<float2>(a[k]);
+                float2 fb = type::Cast::compute<float2>(b[k]);
+                fa.x += fb.x;
+                fa.y += fb.y;
+                a[k] = type::Cast::compute<D2>(fa);
+            }
+        }
+        out4[oi] = acc;  // my output chunk (local write)
+#pragma unroll
+        for (int p = 0; p < NPeers; ++p) {
+            int pp = (p + bid) % NPeers;  // stagger -> spread across NVLink links
+            int rr = (pp < Rank) ? pp : pp + 1;
+            int4 *peer_out = reinterpret_cast<int4 *>(
+                reinterpret_cast<char *>(ARK_SM_CHANS[rr].dst_) + output_offset);
+            peer_out[oi] = acc;  // push reduced chunk to peer output (remote write)
+        }
+    }
+
+    // Barrier 2: every peer has written its chunk into my output.
+    barrier();
 }
 
 }  // namespace ark

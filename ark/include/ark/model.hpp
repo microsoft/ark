@@ -271,14 +271,31 @@ class Model : public ModelGraph {
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
-    // Packet-based all-reduce: uses LL packet channels (data + flag fused) for
-    // low-latency intra-node collective. Single-shot reduce-scatter +
-    // allgather, NOT a ring chain — avoids the (N-1)-step task accumulation of
-    // all_reduce() and is the recommended primitive for small messages on
-    // NVLink.
+    // Tile-local one-shot packet all-reduce (LL packet channels: data + flag
+    // fused). Block `uop_idx` reduces only its own column-tile of the 2-D
+    // `input`; the tile is chosen by the planner (like other tiled ops) and,
+    // when it matches a preceding fused matmul's UnitOutDims, the matmul→AR
+    // handoff is intra-block (no device-wide barrier) and each tile's exchange
+    // overlaps other tiles' matmul. The only packet all-reduce primitive (a
+    // tile grid covering the whole tensor gives the plain one-shot behavior).
     Tensor all_reduce_packet(Tensor input, int rank, int rank_num,
                              Tensor output = NullTensor,
                              const std::string &name = "");
+    // Read-based Reduce-Scatter + All-Gather all-reduce of the 2-D `input`,
+    // bandwidth-optimal (O(N) traffic) for LARGE messages where the one-shot
+    // packet all-reduce (O(N*peers)) is inefficient. A standalone grid-wide
+    // collective (its own processor group), so a grid barrier separates it from
+    // a preceding producer.
+    Tensor all_reduce_rsag(Tensor input, int rank, int rank_num,
+                           Tensor output = NullTensor,
+                           const std::string &name = "");
+    // All-pairs one-shot LL-packet all-reduce of the 2-D `input` for SMALL
+    // messages (a port of mscclpp's `allreduceAllPairs`, the NCCL-API <=16KB
+    // path). Standalone grid-strided collective (its own processor group), so a
+    // grid barrier separates it from a preceding producer.
+    Tensor all_reduce_allpair_packet(Tensor input, int rank, int rank_num,
+                                     Tensor output = NullTensor,
+                                     const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each

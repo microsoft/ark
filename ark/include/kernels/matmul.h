@@ -6,6 +6,7 @@
 
 #if defined(ARK_TARGET_CUDA_ARCH)
 #include "gemm_cutlass.h"
+#include "gemv.h"
 #elif defined(ARK_TARGET_ROCM_ARCH)
 #include "gemm_ck.h"
 #endif  // defined(ARK_TARGET_ROCM_ARCH)
@@ -81,10 +82,21 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     DataTypeC *pC = &C[un * BatchStrideNC + uc * BatchStrideCC];
 
 #if defined(ARK_TARGET_CUDA_ARCH)
-    gemm_cutlass<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
-                 IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-                 ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(
-        pC, pA, pB, uop_idx, smem_per_warp);
+    // GEMV fast path for a [1, K] input in linear-layer layout: the tile is
+    // [1, TileSizeN] (TileSizeM==1), so avoid CUTLASS padding M=1 -> 64. Only
+    // taken when the planner picked an M==1 tile (see ops_matmul.cpp).
+    if constexpr (ProblemSizeM == 1 && TileSizeM == 1 && !IsColumnA &&
+                  IsColumnB) {
+        gemv<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
+             IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
+             ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(pC, pA, pB, uop_idx,
+                                                         smem_per_warp);
+    } else {
+        gemm_cutlass<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
+                     IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM,
+                     ProblemSizeN, ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(
+            pC, pA, pB, uop_idx, smem_per_warp);
+    }
 #elif defined(ARK_TARGET_ROCM_ARCH)
     gemm_ck<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
             IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,

@@ -299,11 +299,16 @@ class Tensor:
         return ark_tensor
 
     def copy(
-        self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
+        self,
+        data: Union[np.ndarray, torch.Tensor],
+        stream: int = 0,
+        async_: bool = False,
     ) -> "Tensor":
         """
         Copies data into this tensor. The data type may differ,
-        but the size must match.
+        but the size must match. Set ``async_`` to skip the host-side stream
+        sync so the copy is safe to record during CUDA graph capture; the
+        caller then owns stream ordering.
         """
         self._raise_if_no_data()
         tensor_bytes = self.nelems() * self.dtype().element_size()
@@ -320,6 +325,7 @@ class Tensor:
                 tensor_bytes,
                 stream,
                 data.device.type == "cuda",
+                async_,
             )
             data.requires_grad = self.requires_grad
             if isinstance(self, Parameter):

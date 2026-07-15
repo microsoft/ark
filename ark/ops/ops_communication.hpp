@@ -103,18 +103,19 @@ class ModelOpRecvReduceSend : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
-// Fused intra-node packet allreduce — one device function emits the three
-// phases of the LL-packet allreduce (scatter → reduce → broadcast).
-// Replaces the three-op chain (`send_packet`,
-// `recv_reduce_send_packet`, `recv_packet`) used by the old
-// `Model::all_reduce_packet`.
-class ModelOpAllReducePacketFused : public ModelOp {
+// Tile-local one-shot packet allreduce (the only packet all-reduce op). Block
+// `uop_idx` reduces ONLY its own [TileRows, TileCols] column-tile of the
+// [Rows, Cols] input — the tile a fused preceding matmul wrote on the same
+// block — so the matmul→AR handoff is intra-block (no device-wide barrier) and
+// each tile's exchange overlaps other tiles' matmul. A tile grid covering the
+// whole tensor gives the plain one-shot behavior. The tile is chosen by the
+// planner (config "Tile"), like other ops. See allreduce_packet in comm.h.
+class ModelOpAllReducePacket : public ModelOp {
    public:
-    ModelOpAllReducePacketFused() = default;
-    ModelOpAllReducePacketFused(
+    ModelOpAllReducePacket() = default;
+    ModelOpAllReducePacket(
         ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
-        uint32_t flag, ModelTensorRef scratch,
-        const std::vector<ModelTensorRef> &peer_scratch_refs);
+        const std::vector<ModelTensorRef> &peer_output_refs);
 
     std::string impl_name(const Json &config) const override;
 
@@ -128,6 +129,44 @@ class ModelOpDeviceSync : public ModelOp {
     ModelOpDeviceSync() = default;
     ModelOpDeviceSync(ModelTensorRef input, int rank, int rank_num,
                       ModelTensorRef output);
+
+    std::string impl_name(const Json &config) const override;
+
+    std::vector<ModelOpArg> impl_args(const Json &config) const override;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
+// Read-based Reduce-Scatter + All-Gather all-reduce for LARGE messages
+// (bandwidth-optimal, O(N) traffic). Grid-wide: every block runs all three
+// phases (scatter / reduce-scatter / all-gather) with grid + cross-rank
+// barriers. Standalone op (its own processor group), not tile-local. See
+// allreduce_rsag in comm.h.
+class ModelOpAllReduceRsag : public ModelOp {
+   public:
+    ModelOpAllReduceRsag() = default;
+    ModelOpAllReduceRsag(ModelTensorRef input, ModelTensorRef output, int rank,
+                         int rank_num,
+                         const std::vector<ModelTensorRef> &peer_output_refs);
+
+    std::string impl_name(const Json &config) const override;
+
+    std::vector<ModelOpArg> impl_args(const Json &config) const override;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
+// All-pairs one-shot LL-packet all-reduce for SMALL messages, a port of
+// mscclpp's `allreduceAllPairs` (the NCCL-API <=16KB path). Standalone
+// grid-strided op (its own processor group; NOT tile-local): every block owns a
+// grid-strided stripe of the whole input, writes it to all peers as LL packets,
+// then reduces its stripe. See allreduce_allpair_packet in comm.h.
+class ModelOpAllReduceAllpairPacket : public ModelOp {
+   public:
+    ModelOpAllReduceAllpairPacket() = default;
+    ModelOpAllReduceAllpairPacket(
+        ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
+        const std::vector<ModelTensorRef> &peer_output_refs);
 
     std::string impl_name(const Json &config) const override;
 

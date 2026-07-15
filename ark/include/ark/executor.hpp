@@ -93,7 +93,8 @@ class Executor {
                      Stream stream = nullptr, bool is_d2d = false) const;
 
     void tensor_write(const Tensor &tensor, const void *data, size_t bytes,
-                      Stream stream = nullptr, bool is_d2d = false) const;
+                      Stream stream = nullptr, bool is_d2d = false,
+                      bool async = false) const;
 
    protected:
     class Impl;

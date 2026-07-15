@@ -118,18 +118,31 @@ class Runtime:
                 "must be set to false in order to pass non-empty "
                 "tensor mappings in `runtime.run`."
             )
-        if self.state != Runtime.StateCode.LaunchedNotRunning:
+        if not self.launched():
             raise log.InvalidUsageError(f"ARK runtime is not launched")
         tensor_mappings = self._normalize_tensor_mappings(tensor_mappings)
         exe = Executor.get()
-        if tensor_mappings and not self.loop_mode:
-            exe.stop()
-            exe.launch(tensor_mappings, self.stream, False, self.record)
-            tensor_mappings = {}
+        # A same-shape placeholder rebind only needs `exe.run()`, which applies
+        # the new external pointers (host-side buffer-registry update) and
+        # launches the kernel with them (a capturable `cuLaunchKernel`). The old
+        # loop_mode=False path wrapped `exe.stop()` + `exe.launch()` around this
+        # to rebind, but those add a stream sync and a cross-rank bootstrap
+        # barrier — forbidden under CUDA-graph capture and needlessly slow
+        # eagerly (a per-call host barrier). Pass the mappings straight to
+        # `exe.run()`; `launch()` is only for a first launch or a shape-changing
+        # recompile, which callers do explicitly.
         self.state = Runtime.StateCode.Running
         exe.run(iter, tensor_mappings)
-        if not non_blocking:
+        if not non_blocking and not self._stream_is_capturing():
             self.wait()
+
+    @staticmethod
+    def _stream_is_capturing() -> bool:
+        """Return True if the current CUDA stream is being graph-captured."""
+        try:
+            return bool(torch.cuda.is_current_stream_capturing())
+        except Exception:
+            return False
 
     def barrier(self):
         """
